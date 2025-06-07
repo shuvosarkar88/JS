@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infographic: The Secret Life of JavaScript</title>
+    <!-- Chosen Palette: Brilliant Blues -->
+    <!-- Application Structure Plan: The infographic is structured as a top-to-bottom narrative, telling the story of what happens to a line of JavaScript code. It begins with the major "players" (engines), moves through the "assembly line" (compilation pipeline), enters the "workshop" (runtime environment), and finally covers "efficiency experts" (optimizations) and the "competitive landscape." This linear, story-driven structure was chosen to make a complex, cyclical technical process understandable and engaging for a developer audience, turning abstract concepts into a relatable journey. -->
+    <!-- Visualization & Content Choices: Data from the report is visualized to maximize impact and clarity. Goal: Compare engine dominance -> Donut Chart for market share. Goal: Organize a process -> HTML/CSS flowchart for the compilation pipeline. Goal: Compare concepts -> Side-by-side cards for Call Stack vs. Heap. Goal: Compare entities -> Radar chart for V8 vs. SpiderMonkey across key metrics. This selection uses the best chart for each data-storytelling goal, strictly avoiding SVG/Mermaid by using Chart.js for canvas-based charts and structured HTML/CSS for diagrams, ensuring a fast, self-contained, and visually consistent experience. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f9fa;
+            color: #343a40;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 450px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 350px;
+            max-height: 400px;
+        }
+        .card {
+            background-color: white;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.1);
+        }
+        .flow-step {
+            text-align: center;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            background-color: #e9ecef;
+            border: 1px solid #dee2e6;
+            position: relative;
+        }
+        .flow-arrow {
+            font-size: 2rem;
+            color: #adb5bd;
+            line-height: 1;
+        }
+        .stat-number {
+            font-size: 3rem;
+            font-weight: 800;
+            color: #004e92;
+        }
+        h1, h2, h3 {
+             color: #004e92;
+        }
+    </style>
+</head>
+<body class="antialiased">
+    <main class="container mx-auto px-4 py-12">
+
+        <!-- Header -->
+        <header class="text-center mb-16">
+            <h1 class="text-4xl md:text-6xl font-extrabold tracking-tight mb-4">The Secret Life of JavaScript</h1>
+            <p class="max-w-3xl mx-auto text-lg text-gray-600">Ever wonder what happens after you write a line of code? It's not magic. It's a sophisticated, high-speed journey through the JavaScript Engine. Let's pull back the curtain.</p>
+        </header>
+
+        <!-- Section 1: The Players - Engine Ecosystem -->
+        <section class="mb-20">
+            <h2 class="text-3xl font-bold text-center mb-2">The Engine Ecosystem</h2>
+            <p class="text-center text-gray-600 mb-8 max-w-2xl mx-auto">A few key players dominate the landscape, executing the code that powers the modern web and beyond. V8's influence extends across browsers and server-side environments.</p>
+            <div class="card max-w-4xl mx-auto p-8">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                    <div>
+                        <h3 class="text-2xl font-bold mb-4">Engine Market Share (Conceptual)</h3>
+                        <p class="text-gray-700 mb-2">Google's V8 is the powerhouse behind Chrome and Node.js, making it the most widespread engine. SpiderMonkey, developed by Mozilla, powers Firefox and has its own rich history of innovation.</p>
+                        <ul class="list-none space-y-2">
+                            <li class="flex items-center"><span class="h-4 w-4 rounded-full bg-blue-500 mr-3"></span><strong>V8 (Chrome, Node.js, etc.)</strong></li>
+                            <li class="flex items-center"><span class="h-4 w-4 rounded-full bg-cyan-400 mr-3"></span><strong>SpiderMonkey (Firefox)</strong></li>
+                            <li class="flex items-center"><span class="h-4 w-4 rounded-full bg-sky-200 mr-3"></span><strong>JavaScriptCore & Others</strong></li>
+                        </ul>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="engineShareChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: The Assembly Line - Compilation Pipeline -->
+        <section class="mb-20">
+            <h2 class="text-3xl font-bold text-center mb-2">The Assembly Line</h2>
+            <p class="text-center text-gray-600 mb-8 max-w-2xl mx-auto">Your code doesn't just run. It's broken down, analyzed, and rebuilt in a multi-stage pipeline designed for maximum speed and efficiency.</p>
+            <div class="card max-w-6xl mx-auto p-8">
+                <div class="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0 md:space-x-4">
+                    <div class="flow-step flex-1">
+                        <h4 class="font-bold">1. Lexer</h4>
+                        <p class="text-sm">Code is broken into "tokens" (keywords, variables).</p>
+                    </div>
+                    <div class="flow-arrow">&#10140;</div>
+                    <div class="flow-step flex-1">
+                        <h4 class="font-bold">2. Parser</h4>
+                        <p class="text-sm">Tokens form an Abstract Syntax Tree (AST).</p>
+                    </div>
+                     <div class="flow-arrow">&#10140;</div>
+                    <div class="flow-step flex-1">
+                        <h4 class="font-bold">3. Interpreter</h4>
+                        <p class="text-sm">AST becomes bytecode for fast startup.</p>
+                    </div>
+                    <div class="flow-arrow">&#10140;</div>
+                    <div class="flow-step flex-1 bg-blue-100 border-blue-300">
+                        <h4 class="font-bold text-blue-800">4. JIT Compiler</h4>
+                        <p class="text-sm text-blue-700">"Hot" code is compiled to optimized machine code.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: The Workshop - Runtime Environment -->
+        <section class="mb-20">
+             <h2 class="text-3xl font-bold text-center mb-2">The Workshop</h2>
+             <p class="text-center text-gray-600 mb-8 max-w-2xl mx-auto">This is where the magic happens. A carefully organized environment manages memory and executes tasks one by one, creating the illusion of doing many things at once.</p>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div class="card">
+                    <h3 class="font-bold text-2xl mb-4">Memory: Stack vs. Heap</h3>
+                    <p class="mb-4 text-gray-700">Memory is split into two primary areas. The Stack is for static data and function calls—fast and orderly. The Heap is for complex objects—dynamic and flexible.</p>
+                    <div class="p-4 bg-gray-50 rounded-lg border">
+                        <h4 class="font-semibold text-blue-700">Call Stack (LIFO)</h4>
+                        <p class="text-sm">▸ Stores primitive types (number, string).</p>
+                        <p class="text-sm">▸ Stores references to objects.</p>
+                        <p class="text-sm">▸ Manages function execution frames.</p>
+                    </div>
+                    <div class="my-4 text-center text-gray-400 font-bold">vs.</div>
+                    <div class="p-4 bg-gray-50 rounded-lg border">
+                        <h4 class="font-semibold text-cyan-700">Memory Heap</h4>
+                        <p class="text-sm">▸ Stores all objects, arrays, and functions.</p>
+                        <p class="text-sm">▸ Dynamic memory allocation.</p>
+                        <p class="text-sm">▸ Managed by the Garbage Collector.</p>
+                    </div>
+                </div>
+                <div class="card">
+                     <h3 class="font-bold text-2xl mb-4">Concurrency: The Event Loop</h3>
+                    <p class="mb-4 text-gray-700">JavaScript is single-threaded, but the Event Loop enables non-blocking asynchronous behavior. It orchestrates tasks between the Call Stack and different queues.</p>
+                    <div class="p-4 border rounded-lg">
+                        <h4 class="font-semibold mb-2">Priority Order:</h4>
+                        <ol class="list-decimal list-inside space-y-2 text-gray-800">
+                            <li>Run all available <strong class="text-blue-700">Synchronous Code</strong> in the Call Stack.</li>
+                            <li>Execute all tasks in the <strong class="text-blue-700">Microtask Queue</strong> (e.g., Promises).</li>
+                            <li>Take one task from the <strong class="text-cyan-700">Macrotask Queue</strong> (e.g., setTimeout, I/O).</li>
+                            <li>Repeat from step 2.</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 4: Efficiency Experts - Key Optimizations -->
+        <section class="mb-20">
+             <h2 class="text-3xl font-bold text-center mb-2">The Efficiency Experts</h2>
+             <p class="text-center text-gray-600 mb-8 max-w-2xl mx-auto">Modern engines use incredible techniques to make dynamic JavaScript run at near-native speeds. Here are some of their most powerful tools.</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div class="card">
+                     <div class="text-4xl mb-3">⚙️</div>
+                     <h3 class="font-bold text-xl mb-2">Hidden Classes (Shapes)</h3>
+                     <p class="text-gray-700">Objects with the same structure share an internal "blueprint." This allows the engine to access properties by memory offset, which is dramatically faster than a dictionary lookup.</p>
+                </div>
+                <div class="card">
+                     <div class="text-4xl mb-3">⚡️</div>
+                    <h3 class="font-bold text-xl mb-2">Inline Caching</h3>
+                    <p class="text-gray-700">The engine caches the results of repeated operations, like property lookups. If the object's shape hasn't changed, it uses the cached result, saving time.</p>
+                </div>
+                <div class="card">
+                     <div class="text-4xl mb-3">🗑️</div>
+                    <h3 class="font-bold text-xl mb-2">Generational Garbage Collection</h3>
+                    <p class="text-gray-700">Based on the theory that most objects are short-lived, the heap is split. The "Young Generation" is collected frequently and cheaply, improving performance.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 5: The Competitive Landscape -->
+        <section>
+            <h2 class="text-3xl font-bold text-center mb-2">The Competitive Landscape</h2>
+            <p class="text-center text-gray-600 mb-8 max-w-2xl mx-auto">The "engine wars" between V8 and SpiderMonkey have driven massive innovation. While architecturally similar, they have different strengths and focus areas.</p>
+            <div class="card max-w-4xl mx-auto p-8">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                    <div>
+                         <h3 class="text-2xl font-bold mb-4">V8 vs. SpiderMonkey</h3>
+                         <p class="text-gray-700">This chart provides a conceptual comparison of the engines across several performance and feature axes. The fierce competition ensures JavaScript gets faster and more capable for everyone.</p>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="engineComparisonChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+    <footer class="text-center py-8 mt-12 border-t border-gray-200">
+        <p class="text-gray-500">Data synthesized from the "Behind the Curtain" Deep Dive Report.</p>
+    </footer>
+
+<script>
+    const chartTooltipConfig = {
+        plugins: {
+            tooltip: {
+                callbacks: {
+                    title: function(tooltipItems) {
+                        const item = tooltipItems[0];
+                        let label = item.chart.data.labels[item.dataIndex];
+                        if (Array.isArray(label)) {
+                            return label.join(' ');
+                        } else {
+                            return label;
+                        }
+                    }
+                }
+            }
+        }
+    };
+    
+    function wrapLabels(label, maxLength = 16) {
+        if (typeof label !== 'string' || label.length <= maxLength) {
+            return label;
+        }
+        const words = label.split(' ');
+        const lines = [];
+        let currentLine = '';
+        words.forEach(word => {
+            if ((currentLine + ' ' + word).trim().length > maxLength) {
+                lines.push(currentLine.trim());
+                currentLine = word;
+            } else {
+                currentLine = (currentLine + ' ' + word).trim();
+            }
+        });
+        if (currentLine) {
+            lines.push(currentLine.trim());
+        }
+        return lines;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const engineShareCtx = document.getElementById('engineShareChart').getContext('2d');
+        new Chart(engineShareCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['V8 Engine (Chrome, Node, etc.)', 'SpiderMonkey (Firefox)', 'JavaScriptCore & Others'],
+                datasets: [{
+                    label: 'Engine Share',
+                    data: [70, 20, 10],
+                    backgroundColor: ['#007bff', '#4ba3c3', '#cce5ff'],
+                    borderColor: '#ffffff',
+                    borderWidth: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    ...chartTooltipConfig.plugins,
+                    legend: {
+                        display: false
+                    }
+                },
+                cutout: '60%'
+            }
+        });
+
+        const engineComparisonCtx = document.getElementById('engineComparisonChart').getContext('2d');
+        new Chart(engineComparisonCtx, {
+            type: 'radar',
+            data: {
+                labels: ['Raw Speed', 'Memory Use', 'Startup Time', wrapLabels('Standards Compliance'), 'Tooling'],
+                datasets: [{
+                    label: 'V8',
+                    data: [9, 7, 8, 8, 9],
+                    backgroundColor: 'rgba(0, 123, 255, 0.2)',
+                    borderColor: '#007bff',
+                    pointBackgroundColor: '#007bff',
+                    pointBorderColor: '#fff',
+                    pointHoverBackgroundColor: '#fff',
+                    pointHoverBorderColor: '#007bff'
+                }, {
+                    label: 'SpiderMonkey',
+                    data: [8, 8, 7, 9, 8],
+                    backgroundColor: 'rgba(75, 163, 195, 0.2)',
+                    borderColor: '#4ba3c3',
+                    pointBackgroundColor: '#4ba3c3',
+                    pointBorderColor: '#fff',
+                    pointHoverBackgroundColor: '#fff',
+                    pointHoverBorderColor: '#4ba3c3'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                     ...chartTooltipConfig.plugins,
+                    legend: {
+                        position: 'top',
+                    }
+                },
+                scales: {
+                    r: {
+                        angleLines: { color: '#dee2e6' },
+                        grid: { color: '#dee2e6' },
+                        pointLabels: { font: { size: 12 } },
+                        ticks: {
+                            backdropColor: 'transparent',
+                            stepSize: 2
+                        },
+                        min: 0,
+                        max: 10
+                    }
+                }
+            }
+        });
+    });
+</script>
+
+</body>
+</html>

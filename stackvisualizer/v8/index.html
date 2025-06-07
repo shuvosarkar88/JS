@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The V8 JavaScript Engine: An Interactive Explainer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Calm Harmony Neutrals -->
+    <!-- Application Structure Plan: A thematic, interactive dashboard SPA. The top navigation allows non-linear exploration of 'Pipeline', 'Memory', 'Optimizations', and 'Environments'. This structure was chosen over a linear document to let users focus on specific areas of interest. The goal is to make complex topics digestible through targeted interactions, such as clicking through the pipeline, simulating garbage collection, and triggering optimization concepts like hidden class transitions. This user-centric flow enhances learning and engagement with the dense technical report. -->
+    <!-- Visualization & Content Choices: The application uses interactive diagrams (built with HTML/CSS/JS) for processes like the compilation pipeline and garbage collection, and Chart.js for quantitative comparisons like compiler trade-offs and heap distribution. Interactive code snippets demonstrate abstract concepts like Hidden Classes. This multi-faceted approach transforms the report's text into an engaging learning tool. For example, the 'Compilation Pipeline' is an interactive flowchart; its goal is to show a process. The 'Memory Management' section uses an interactive simulation and a donut chart; its goal is to explain a system's structure and behavior. The 'Optimizations' section uses tabs with interactive examples; its goal is to clarify complex, abstract concepts. This supports the overall dashboard structure and avoids static, passive reading. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8f7f4; color: #37352f; }
+        .nav-button { transition: all 0.2s ease-in-out; }
+        .nav-button.active { color: #b0725a; border-bottom-color: #b0725a; }
+        .nav-button:not(.active):hover { color: #5f9ea0; border-bottom-color: #5f9ea0; }
+        .content-section { display: none; }
+        .content-section.active { display: block; }
+        .card { background-color: #ffffff; border: 1px solid #e0e0e0; border-radius: 0.75rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03); }
+        .interactive-btn { background-color: #5f9ea0; color: white; transition: background-color 0.2s; }
+        .interactive-btn:hover { background-color: #4a7c7d; }
+        .pipeline-stage { cursor: pointer; border-left-width: 4px; border-color: #e0e0e0; transition: all 0.3s ease; }
+        .pipeline-stage.active { border-color: #b0725a; background-color: #fff; transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); }
+        .chart-container { position: relative; width: 100%; max-width: 600px; margin-left: auto; margin-right: auto; height: 350px; max-height: 400px; }
+        .heap-space { border: 2px dashed #d1d5db; min-height: 200px; }
+        .gc-object { width: 1.5rem; height: 1.5rem; border-radius: 9999px; transition: all 0.5s ease-in-out; }
+        .tab.active { border-color: #b0725a; color: #b0725a; }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+
+        <header class="text-center mb-12">
+            <h1 class="text-4xl md:text-5xl font-bold text-gray-800">The V8 JavaScript Engine</h1>
+            <p class="mt-4 text-lg text-gray-600">An interactive guide to its internal architecture and performance optimizations.</p>
+        </header>
+
+        <nav class="flex justify-center border-b-2 border-gray-200 mb-12">
+            <button class="nav-button active text-lg font-semibold py-4 px-6 border-b-4 border-transparent" data-target="intro">Introduction</button>
+            <button class="nav-button text-lg font-semibold py-4 px-6 border-b-4 border-transparent" data-target="pipeline">Compilation Pipeline</button>
+            <button class="nav-button text-lg font-semibold py-4 px-6 border-b-4 border-transparent" data-target="memory">Memory Management</button>
+            <button class="nav-button text-lg font-semibold py-4 px-6 border-b-4 border-transparent" data-target="optimizations">Runtime Optimizations</button>
+            <button class="nav-button text-lg font-semibold py-4 px-6 border-b-4 border-transparent" data-target="environments">Environments</button>
+        </nav>
+
+        <main id="app-content">
+
+            <section id="intro" class="content-section active animate-fade-in">
+                 <div class="card p-8">
+                    <h2 class="text-3xl font-bold mb-4">What is V8?</h2>
+                    <p class="text-gray-700 leading-relaxed mb-6">The V8 engine, an open-source project from Google, is a high-performance JavaScript and WebAssembly execution environment written in C++. Its purpose is to parse, compile, and execute JavaScript code with exceptional speed. This power is central to modern web browsers like Google Chrome and server-side platforms like Node.js, enabling complex, interactive applications and pushing JavaScript beyond the browser.</p>
+                     <div class="grid md:grid-cols-3 gap-6 text-center">
+                        <div class="p-6 bg-amber-50 rounded-lg">
+                            <h3 class="font-bold text-xl mb-2">High-Performance JIT</h3>
+                            <p class="text-amber-800">Compiles JavaScript directly to native machine code at runtime for maximum speed.</p>
+                        </div>
+                        <div class="p-6 bg-teal-50 rounded-lg">
+                            <h3 class="font-bold text-xl mb-2">Open-Source</h3>
+                            <p class="text-teal-800">Fosters transparency, community contributions, and wide adoption across projects.</p>
+                        </div>
+                        <div class="p-6 bg-rose-50 rounded-lg">
+                             <h3 class="font-bold text-xl mb-2">Embeddable</h3>
+                             <p class="text-rose-800">Designed as a C++ library to be integrated into any application, from browsers to servers.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="pipeline" class="content-section">
+                <div class="text-center mb-8">
+                    <h2 class="text-3xl font-bold">The Compilation Pipeline</h2>
+                    <p class="mt-2 text-gray-600 max-w-3xl mx-auto">V8 uses a multi-stage pipeline to transform JavaScript source code into optimized machine code. This balances fast startup with peak performance. Click on a stage to learn more about its role in the process.</p>
+                </div>
+
+                <div class="lg:flex lg:space-x-8">
+                    <div class="lg:w-1/3 space-y-4 mb-8 lg:mb-0">
+                        <div id="stage-parser" class="pipeline-stage p-4 rounded-lg active">
+                            <h3 class="font-bold text-lg">1. Parsing</h3>
+                            <p class="text-sm text-gray-500">Source Code → Abstract Syntax Tree (AST)</p>
+                        </div>
+                        <div id="stage-ignition" class="pipeline-stage p-4 rounded-lg">
+                            <h3 class="font-bold text-lg">2. Ignition</h3>
+                            <p class="text-sm text-gray-500">AST → Bytecode</p>
+                        </div>
+                         <div id="stage-turbofan" class="pipeline-stage p-4 rounded-lg">
+                            <h3 class="font-bold text-lg">3. JIT Tiers (SparkPlug, Maglev, TurboFan)</h3>
+                            <p class="text-sm text-gray-500">Bytecode → Optimized Machine Code</p>
+                        </div>
+                    </div>
+                    <div class="lg:w-2/3 card p-6">
+                        <div id="pipeline-details"></div>
+                    </div>
+                </div>
+                
+                <div class="card p-8 mt-12">
+                    <h3 class="text-2xl font-bold text-center mb-4">Compiler Tiers: Speed vs. Optimization</h3>
+                    <p class="text-center text-gray-600 mb-6">V8's JIT compilers offer different trade-offs. Early tiers compile fast but produce slower code, while later tiers take longer to produce highly optimized code for "hot" functions.</p>
+                    <div class="chart-container">
+                        <canvas id="compilerChart"></canvas>
+                    </div>
+                </div>
+
+            </section>
+
+            <section id="memory" class="content-section">
+                <div class="text-center mb-8">
+                    <h2 class="text-3xl font-bold">Memory Management</h2>
+                    <p class="mt-2 text-gray-600 max-w-3xl mx-auto">V8 uses a generational garbage collector to efficiently manage memory. This system is based on the "generational hypothesis": most objects die young. This section provides a simplified, interactive look at how it works.</p>
+                </div>
+
+                <div class="card p-8">
+                    <h3 class="text-2xl font-bold text-center mb-4">Interactive Heap Simulation</h3>
+                     <div class="flex justify-center space-x-4 mb-6">
+                        <button id="addObjectBtn" class="interactive-btn font-semibold py-2 px-4 rounded-lg">Allocate Object</button>
+                        <button id="minorGcBtn" class="interactive-btn font-semibold py-2 px-4 rounded-lg">Run Minor GC (Scavenge)</button>
+                        <button id="majorGcBtn" class="interactive-btn font-semibold py-2 px-4 rounded-lg">Run Major GC (Mark & Sweep)</button>
+                    </div>
+                    <div id="gc-status" class="text-center mb-6 font-medium text-gray-700 h-6"></div>
+                    <div class="grid md:grid-cols-2 gap-8">
+                        <div>
+                            <h4 class="text-xl font-semibold mb-2 text-center">New Space (Young Generation)</h4>
+                            <div id="new-space" class="heap-space p-4 flex flex-wrap gap-2 items-start rounded-lg bg-teal-50"></div>
+                        </div>
+                        <div>
+                            <h4 class="text-xl font-semibold mb-2 text-center">Old Space (Old Generation)</h4>
+                            <div id="old-space" class="heap-space p-4 flex flex-wrap gap-2 items-start rounded-lg bg-rose-50"></div>
+                        </div>
+                    </div>
+                </div>
+                 <div class="card p-8 mt-12">
+                    <h3 class="text-2xl font-bold text-center mb-4">Heap Space Distribution</h3>
+                    <p class="text-center text-gray-600 mb-6">The New Space is kept small for frequent, fast collections, while the Old Space is larger and collected less often.</p>
+                    <div class="chart-container h-80 max-h-80">
+                         <canvas id="heapChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <section id="optimizations" class="content-section">
+                <div class="text-center mb-8">
+                    <h2 class="text-3xl font-bold">Runtime Optimizations</h2>
+                    <p class="mt-2 text-gray-600 max-w-3xl mx-auto">V8 uses clever techniques to execute dynamic JavaScript code with incredible speed. Explore some of the most important concepts below.</p>
+                </div>
+                
+                <div class="mb-8 border-b border-gray-300 flex justify-center">
+                    <button class="opt-tab tab py-3 px-5 border-b-2 font-semibold active" data-target="hidden-classes">Hidden Classes</button>
+                    <button class="opt-tab tab py-3 px-5 border-b-2 font-semibold" data-target="inline-caching">Inline Caching</button>
+                    <button class="opt-tab tab py-3 px-5 border-b-2 font-semibold" data-target="deoptimization">De-optimization</button>
+                </div>
+
+                <div id="optimizations-content">
+                    <div id="hidden-classes" class="opt-content active">
+                        <div class="card p-8">
+                            <h3 class="text-2xl font-bold mb-2">Hidden Classes (Object Shapes)</h3>
+                            <p class="text-gray-700 leading-relaxed mb-6">To speed up property access, V8 creates internal "hidden classes" for objects. Objects with the same structure (properties added in the same order) share a hidden class. This allows V8 to know the memory offset of a property, avoiding slow dictionary lookups. Below, you can see how adding a property transitions an object to a new hidden class.</p>
+                            
+                            <div class="grid md:grid-cols-2 gap-8 items-center">
+                                <div>
+                                    <h4 class="font-semibold text-lg mb-4">Interactive Demo:</h4>
+                                    <button id="addPropertyBtn" class="interactive-btn font-semibold py-2 px-4 rounded-lg mb-4">Add Property 'y'</button>
+                                    <button id="resetObjectBtn" class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg mb-4 ml-2">Reset</button>
+                                    <div class="bg-gray-100 p-4 rounded-lg font-mono text-sm">
+                                        <p>let obj = { x: 1 };</p>
+                                        <p id="dynamic-property" class="hidden text-rose-600">obj.y = 2;</p>
+                                    </div>
+                                </div>
+                                <div class="bg-gray-50 p-6 rounded-lg">
+                                    <h4 class="font-semibold text-lg mb-2">Internal State:</h4>
+                                    <div id="hidden-class-display">
+                                        <p><strong>Object:</strong> <span>{ x: 1 }</span></p>
+                                        <p><strong>Hidden Class:</strong> <span class="font-mono text-teal-600">C0</span></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="inline-caching" class="opt-content hidden">
+                        <div class="card p-8">
+                            <h3 class="text-2xl font-bold mb-2">Inline Caching (ICs)</h3>
+                            <p class="text-gray-700 leading-relaxed mb-6">Inline Caching speeds up repeated operations by "remembering" information about the types of data it sees. The state of an IC changes based on the number of different object shapes or types an operation encounters. Monomorphic is the fastest state.</p>
+                             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                                <div id="ic-uninit" class="p-4 rounded-lg border-2 border-gray-300">
+                                    <h4 class="font-semibold">Uninitialized</h4>
+                                </div>
+                                <div id="ic-mono" class="p-4 rounded-lg border-2 border-gray-300">
+                                    <h4 class="font-semibold">Monomorphic</h4>
+                                    <p class="text-sm">Sees 1 shape</p>
+                                </div>
+                                <div id="ic-poly" class="p-4 rounded-lg border-2 border-gray-300">
+                                    <h4 class="font-semibold">Polymorphic</h4>
+                                    <p class="text-sm">Sees 2-4 shapes</p>
+                                </div>
+                                <div id="ic-mega" class="p-4 rounded-lg border-2 border-gray-300">
+                                    <h4 class="font-semibold">Megamorphic</h4>
+                                    <p class="text-sm">>4 shapes</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="deoptimization" class="opt-content hidden">
+                         <div class="card p-8">
+                            <h3 class="text-2xl font-bold mb-2">De-optimization: When Good Code Goes Bad</h3>
+                            <p class="text-gray-700 leading-relaxed mb-6">Because TurboFan's optimizations are speculative, they can fail if its assumptions are proven wrong at runtime. When this happens, V8 discards the optimized code and "de-optimizes," falling back to slower bytecode. This is a crucial safety net but hurts performance. Here are common triggers to avoid.</p>
+                            <div id="deopt-grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="environments" class="content-section">
+                <div class="text-center mb-8">
+                    <h2 class="text-3xl font-bold">V8 in Diverse Environments</h2>
+                    <p class="mt-2 text-gray-600 max-w-3xl mx-auto">V8 isn't just for one purpose. Its embeddable nature allows it to power vastly different applications, most notably web browsers like Chrome and server-side runtimes like Node.js. The key is the V8 Embedding API, which allows a host application to extend JavaScript's capabilities.</p>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div class="card p-8">
+                        <h3 class="text-2xl font-bold mb-4 text-center">Browser (Google Chrome)</h3>
+                        <div class="text-center text-6xl mb-4">🌐</div>
+                        <p class="text-gray-700 leading-relaxed">In Chrome, V8 works with the <strong class="text-teal-700">Blink rendering engine</strong>. V8 executes JavaScript, but Blink provides the objects and APIs that make a web page interactive. V8's access to the system is heavily sandboxed for security.</p>
+                        <ul class="mt-4 space-y-2">
+                           <li class="flex items-start"><span class="text-teal-500 mr-2">▶</span><span><strong>DOM Access:</strong> JavaScript can manipulate the page content and structure via the `document` object.</span></li>
+                           <li class="flex items-start"><span class="text-teal-500 mr-2">▶</span><span><strong>Web APIs:</strong> Host functions like `fetch()` for network requests and `setTimeout()` for timers are exposed to JavaScript.</span></li>
+                        </ul>
+                    </div>
+                    <div class="card p-8">
+                        <h3 class="text-2xl font-bold mb-4 text-center">Server (Node.js)</h3>
+                         <div class="text-center text-6xl mb-4">⚙️</div>
+                        <p class="text-gray-700 leading-relaxed">In Node.js, V8 executes JavaScript logic, but it's paired with the <strong class="text-rose-700">Libuv library</strong>. Libuv provides the event loop and asynchronous, non-blocking I/O capabilities crucial for a server.</p>
+                        <ul class="mt-4 space-y-2">
+                           <li class="flex items-start"><span class="text-rose-500 mr-2">▶</span><span><strong>System Access:</strong> Node.js exposes APIs for file system access (`fs`), networking (`http`, `net`), and other OS-level tasks.</span></li>
+                           <li class="flex items-start"><span class="text-rose-500 mr-2">▶</span><span><strong>Event Loop:</strong> Libuv manages I/O operations and queues callbacks to be executed by V8, preventing the main thread from blocking.</span></li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const navButtons = document.querySelectorAll('.nav-button');
+            const contentSections = document.querySelectorAll('.content-section');
+
+            const pipelineStages = document.querySelectorAll('.pipeline-stage');
+            const pipelineDetailsContainer = document.getElementById('pipeline-details');
+            
+            const optTabs = document.querySelectorAll('.opt-tab');
+            const optContents = document.querySelectorAll('.opt-content');
+
+            const pipelineContent = {
+                parser: {
+                    title: 'Parsing (Lexical & Syntax Analysis)',
+                    description: "The first step is parsing the raw JavaScript source code. A lexer breaks the code into tokens, and then a parser constructs an Abstract Syntax Tree (AST). The AST is a tree-like representation of the code's syntactic structure, making it easier for the engine to understand and process.",
+                    input: 'JavaScript Source Code',
+                    output: 'Abstract Syntax Tree (AST)',
+                    keyPoints: ['Tokenization of code', 'AST represents code structure', 'Background parsing for performance']
+                },
+                ignition: {
+                    title: 'Ignition (Interpreter)',
+                    description: "Ignition is V8's interpreter. It takes the AST and compiles it into a stream of bytecode. This bytecode is a platform-agnostic intermediate representation that can be executed quickly. While it runs, Ignition's integrated profiler gathers feedback (like data types used) to identify 'hot' functions that are run frequently.",
+                    input: 'Abstract Syntax Tree (AST)',
+                    output: 'Bytecode + Profiling Data',
+                    keyPoints: ['Fast startup', 'Low memory usage', 'Generates and executes bytecode', 'Profiles code for hot spots']
+                },
+                turbofan: {
+                    title: 'JIT Tiers (SparkPlug, Maglev, TurboFan)',
+                    description: "For 'hot' functions identified by Ignition, V8 uses a series of Just-In-Time (JIT) compilers. SparkPlug provides a quick, unoptimized compilation. Maglev is a mid-tier compiler. Finally, TurboFan, the most powerful tier, takes bytecode and profiling feedback to create highly-optimized, speculative machine code. This code is extremely fast but can be de-optimized if its assumptions are wrong.",
+                    input: 'Bytecode + Profiling Feedback',
+                    output: 'Optimized Machine Code',
+                    keyPoints: ['Speculative optimization based on types', 'Inlining, dead code elimination, etc.', 'Generates architecture-specific code']
+                }
+            };
+            
+            function updatePipelineDetails(stageId) {
+                const content = pipelineContent[stageId];
+                if (!content) return;
+
+                pipelineDetailsContainer.innerHTML = `
+                    <h3 class="text-2xl font-bold mb-4">${content.title}</h3>
+                    <p class="text-gray-700 mb-6">${content.description}</p>
+                    <div class="space-y-3">
+                        <p><strong>Input:</strong> <span class="font-mono bg-gray-100 px-2 py-1 rounded">${content.input}</span></p>
+                        <p><strong>Output:</strong> <span class="font-mono bg-gray-100 px-2 py-1 rounded">${content.output}</span></p>
+                        <div>
+                            <p class="font-bold mb-2">Key Functions:</p>
+                            <ul class="list-disc list-inside text-gray-700 space-y-1">
+                                ${content.keyPoints.map(p => `<li>${p}</li>`).join('')}
+                            </ul>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            navButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const targetId = button.dataset.target;
+
+                    navButtons.forEach(btn => btn.classList.remove('active'));
+                    button.classList.add('active');
+
+                    contentSections.forEach(section => {
+                        if (section.id === targetId) {
+                            section.classList.add('active');
+                        } else {
+                            section.classList.remove('active');
+                        }
+                    });
+                });
+            });
+
+            pipelineStages.forEach(stage => {
+                stage.addEventListener('click', () => {
+                    pipelineStages.forEach(s => s.classList.remove('active'));
+                    stage.classList.add('active');
+                    const stageId = stage.id.split('-')[1];
+                    updatePipelineDetails(stageId);
+                });
+            });
+            
+            optTabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    optTabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    
+                    const targetId = tab.dataset.target;
+                    optContents.forEach(content => {
+                        if (content.id === targetId) {
+                            content.classList.remove('hidden');
+                        } else {
+                            content.classList.add('hidden');
+                        }
+                    });
+                });
+            });
+
+            updatePipelineDetails('parser');
+
+            const compilerData = {
+                labels: ['Ignition', 'SparkPlug', 'Maglev', 'TurboFan'],
+                datasets: [
+                    {
+                        label: 'Compilation Speed',
+                        data: [95, 80, 50, 20],
+                        backgroundColor: 'rgba(95, 158, 160, 0.6)',
+                        borderColor: 'rgba(95, 158, 160, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Optimized Code Speed',
+                        data: [10, 30, 75, 98],
+                        backgroundColor: 'rgba(176, 114, 90, 0.6)',
+                        borderColor: 'rgba(176, 114, 90, 1)',
+                        borderWidth: 1
+                    }
+                ]
+            };
+            new Chart(document.getElementById('compilerChart'), {
+                type: 'bar',
+                data: compilerData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    scales: {
+                        x: { beginAtZero: true, max: 100, ticks: { callback: (value) => value + '%' } },
+                        y: { grid: { display: false } }
+                    },
+                    plugins: {
+                        legend: { position: 'top' },
+                        tooltip: {
+                            callbacks: { label: (context) => `${context.dataset.label}: ${context.raw}%` }
+                        }
+                    }
+                }
+            });
+
+            const heapData = {
+                labels: ['New Space', 'Old Space'],
+                datasets: [{
+                    data: [15, 85],
+                    backgroundColor: ['#5f9ea0', '#b0725a'],
+                    hoverOffset: 4
+                }]
+            };
+            new Chart(document.getElementById('heapChart'), {
+                type: 'doughnut',
+                data: heapData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top' },
+                        tooltip: { callbacks: { label: (context) => `${context.label}: ${context.raw}% of Heap` } }
+                    }
+                }
+            });
+            
+            const newSpace = document.getElementById('new-space');
+            const oldSpace = document.getElementById('old-space');
+            const addObjectBtn = document.getElementById('addObjectBtn');
+            const minorGcBtn = document.getElementById('minorGcBtn');
+            const majorGcBtn = document.getElementById('majorGcBtn');
+            const gcStatus = document.getElementById('gc-status');
+
+            let objectId = 0;
+
+            const updateStatus = (text, color = 'text-gray-700') => {
+                gcStatus.textContent = text;
+                gcStatus.className = `text-center mb-6 font-medium h-6 transition-colors duration-300 ${color}`;
+            }
+
+            addObjectBtn.addEventListener('click', () => {
+                if (newSpace.children.length >= 12) {
+                    updateStatus('New Space is full! Run a Minor GC.', 'text-red-600');
+                    return;
+                }
+                const obj = document.createElement('div');
+                obj.className = 'gc-object bg-teal-500';
+                obj.dataset.id = objectId++;
+                obj.dataset.survived = 0;
+                newSpace.appendChild(obj);
+                updateStatus('Allocated new object in New Space.', 'text-green-600');
+            });
+
+            minorGcBtn.addEventListener('click', () => {
+                updateStatus('Running Scavenge... copying survivors.', 'text-blue-600');
+                const survivors = [];
+                const garbage = [];
+                
+                Array.from(newSpace.children).forEach(obj => {
+                    if (Math.random() > 0.5) { 
+                        survivors.push(obj);
+                    } else {
+                        garbage.push(obj);
+                    }
+                });
+
+                garbage.forEach(g => g.remove());
+
+                setTimeout(() => {
+                    survivors.forEach(s => {
+                        let survivedCount = parseInt(s.dataset.survived) + 1;
+                        s.dataset.survived = survivedCount;
+                        if (survivedCount >= 2) {
+                            s.classList.remove('bg-teal-500');
+                            s.classList.add('bg-rose-500');
+                            oldSpace.appendChild(s);
+                        }
+                    });
+                    const promotedCount = Array.from(oldSpace.children).filter(c => c.classList.contains('bg-rose-500')).length - (oldSpace.children.length - survivors.filter(s => s.parentElement === oldSpace).length);
+                    updateStatus(`Minor GC complete. ${garbage.length} objects collected. ${survivors.length} survived. ${promotedCount > 0 ? promotedCount + ' promoted.' : ''}`, 'text-gray-700');
+                }, 500);
+            });
+
+            majorGcBtn.addEventListener('click', () => {
+                 updateStatus('Running Mark & Sweep on Old Space...', 'text-purple-600');
+                 const survivors = [];
+                 const garbage = [];
+
+                 Array.from(oldSpace.children).forEach(obj => {
+                    if (Math.random() > 0.3) {
+                         survivors.push(obj);
+                    } else {
+                        garbage.push(obj);
+                    }
+                });
+
+                garbage.forEach(g => g.remove());
+
+                setTimeout(() => {
+                     updateStatus(`Major GC complete. ${garbage.length} objects collected from Old Space.`, 'text-gray-700');
+                }, 500);
+            });
+
+            const addPropertyBtn = document.getElementById('addPropertyBtn');
+            const resetObjectBtn = document.getElementById('resetObjectBtn');
+            const dynamicProperty = document.getElementById('dynamic-property');
+            const hcDisplay = document.getElementById('hidden-class-display');
+            
+            const resetHiddenClassDemo = () => {
+                dynamicProperty.classList.add('hidden');
+                hcDisplay.innerHTML = `
+                    <p><strong>Object:</strong> <span>{ x: 1 }</span></p>
+                    <p><strong>Hidden Class:</strong> <span class="font-mono text-teal-600">C0</span></p>
+                `;
+                 addPropertyBtn.disabled = false;
+            }
+
+            addPropertyBtn.addEventListener('click', () => {
+                dynamicProperty.classList.remove('hidden');
+                 hcDisplay.innerHTML = `
+                    <p><strong>Object:</strong> <span>{ x: 1, y: 2 }</span></p>
+                    <p class="text-rose-600 font-semibold">Transition!</p>
+                    <p><strong>New Hidden Class:</strong> <span class="font-mono text-rose-600">C1</span></p>
+                `;
+                addPropertyBtn.disabled = true;
+            });
+            resetObjectBtn.addEventListener('click', resetHiddenClassDemo);
+
+            const deoptGrid = document.getElementById('deopt-grid');
+            const deoptReasons = [
+                { trigger: 'Hidden Class Change', reason: 'Adding/deleting properties after an object is created and used.' },
+                { trigger: 'Type Instability', reason: 'An operation receives too many different data types (e.g., a function adds numbers, then strings).' },
+                { trigger: 'Changing Array Kinds', reason: 'Mixing data types in an array, like numbers and objects, can cause deoptimization.' },
+                { trigger: 'Problematic Features', reason: 'Historically, constructs like try...catch in hot loops could prevent optimization.' },
+                { trigger: 'Modifying arguments', reason: 'Altering the `arguments` object is slow and hinders optimization.' },
+            ];
+
+            deoptGrid.innerHTML = deoptReasons.map(item => `
+                <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <h4 class="font-bold text-rose-700">${item.trigger}</h4>
+                    <p class="text-gray-600 text-sm mt-1">${item.reason}</p>
+                </div>
+            `).join('');
+
+            const icStates = ['ic-uninit', 'ic-mono', 'ic-poly', 'ic-mega'];
+            let currentICState = 0;
+            const highlightIC = () => {
+                icStates.forEach((id, index) => {
+                    const el = document.getElementById(id);
+                    if (index === currentICState) {
+                        el.classList.add('bg-amber-100', 'border-amber-400');
+                    } else {
+                        el.classList.remove('bg-amber-100', 'border-amber-400');
+                    }
+                });
+                currentICState = (currentICState + 1) % icStates.length;
+            };
+            setInterval(highlightIC, 2000);
+            highlightIC();
+
+        });
+    </script>
+
+</body>
+</html>

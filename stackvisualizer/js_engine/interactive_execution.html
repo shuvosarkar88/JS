@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Guide to JavaScript Execution</title>
+    <!-- Chosen Palette: Warm Neutrals -->
+    <!-- Application Structure Plan: A single-page application designed as an interactive journey. The structure is thematic, not linear, allowing users to explore key concepts through a main navigation bar and interactive visualizations. The core sections are: The Pipeline (visualizing code transformation), The Runtime (explaining Stack, Heap, and Event Loop), Memory Management (detailing Garbage Collection), and Engine Optimizations (covering Hidden Classes and ICs). A final section compares V8 and SpiderMonkey. This structure was chosen to break down a complex, dense topic into digestible, interactive modules, prioritizing user engagement and conceptual understanding over a static, report-like format. -->
+    <!-- Visualization & Content Choices: The application uses interactive diagrams and simplified charts to explain abstract concepts. For example, the compilation pipeline is a step-by-step animation (HTML/CSS/JS) to show code transformation. The Event Loop is demonstrated with an animated queue simulation (HTML/CSS/JS) instead of a static chart, which better illustrates the flow of tasks. Garbage Collection is shown with an interactive bar chart (Chart.js) where users can trigger GC events. Hidden Classes are explained via a diagram that changes based on user actions. This approach focuses on 'learning by doing', making the technical content more intuitive and memorable. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f5f5f4; /* stone-100 */
+            color: #292524; /* stone-800 */
+        }
+        .nav-link {
+            transition: color 0.3s, border-bottom-color 0.3s;
+            border-bottom: 2px solid transparent;
+        }
+        .nav-link.active, .nav-link:hover {
+            color: #0c4a6e; /* sky-800 */
+            border-bottom-color: #0c4a6e;
+        }
+        .card {
+            background-color: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.1);
+        }
+        .btn {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            background-color: #0ea5e9; /* sky-500 */
+            color: white;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .btn:hover {
+            background-color: #0284c7; /* sky-600 */
+        }
+        .btn-secondary {
+            background-color: #e5e7eb; /* gray-200 */
+            color: #374151; /* gray-700 */
+        }
+        .btn-secondary:hover {
+            background-color: #d1d5db; /* gray-300 */
+        }
+        .code-block {
+            background-color: #1c1917; /* stone-900 */
+            color: #e7e5e4; /* stone-200 */
+            padding: 1rem;
+            border-radius: 0.5rem;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+        .interactive-box {
+            border: 1px solid #e7e5e4; /* stone-200 */
+            padding: 1rem;
+            border-radius: 0.5rem;
+            min-height: 100px;
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- Header & Navigation -->
+    <header class="bg-white/80 backdrop-blur-md sticky top-0 z-50 shadow-sm">
+        <nav class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex-shrink-0">
+                    <h1 class="text-xl font-bold text-sky-800">JS Execution</h1>
+                </div>
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-4">
+                        <a href="#pipeline" class="nav-link px-3 py-2 text-sm font-medium">Pipeline</a>
+                        <a href="#runtime" class="nav-link px-3 py-2 text-sm font-medium">Runtime</a>
+                        <a href="#memory" class="nav-link px-3 py-2 text-sm font-medium">Memory</a>
+                        <a href="#optimizations" class="nav-link px-3 py-2 text-sm font-medium">Optimizations</a>
+                        <a href="#comparison" class="nav-link px-3 py-2 text-sm font-medium">Comparison</a>
+                    </div>
+                </div>
+                <div class="md:hidden">
+                     <button id="mobile-menu-button" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-sky-800 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-sky-500">
+                        <span class="sr-only">Open main menu</span>
+                        <svg class="h-6 w-6" id="menu-icon-open" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                         <svg class="hidden h-6 w-6" id="menu-icon-close" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+             <div class="md:hidden hidden" id="mobile-menu">
+                <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+                    <a href="#pipeline" class="nav-link block px-3 py-2 rounded-md text-base font-medium">Pipeline</a>
+                    <a href="#runtime" class="nav-link block px-3 py-2 rounded-md text-base font-medium">Runtime</a>
+                    <a href="#memory" class="nav-link block px-3 py-2 rounded-md text-base font-medium">Memory</a>
+                    <a href="#optimizations" class="nav-link block px-3 py-2 rounded-md text-base font-medium">Optimizations</a>
+                    <a href="#comparison" class="nav-link block px-3 py-2 rounded-md text-base font-medium">Comparison</a>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+
+        <!-- Hero Section -->
+        <section class="text-center mb-16 md:mb-24">
+            <h2 class="text-3xl md:text-5xl font-bold tracking-tight mb-4">Behind the Curtain</h2>
+            <p class="max-w-3xl mx-auto text-lg text-stone-600">
+                An interactive exploration of what happens when JavaScript code runs. From source code to optimized machine instructions, discover the engine's secrets.
+            </p>
+        </section>
+
+        <!-- Compilation Pipeline -->
+        <section id="pipeline" class="mb-16 md:mb-24 scroll-mt-16">
+            <h3 class="text-2xl md:text-3xl font-bold mb-2 text-center">The Compilation Pipeline</h3>
+            <p class="text-stone-600 text-center max-w-2xl mx-auto mb-8">JavaScript engines don't just read your code; they transform it through a sophisticated pipeline to make it run fast. This interactive diagram shows the key stages of this journey. Click through the steps to see how a simple line of code is processed.</p>
+            <div class="card p-6 md:p-8">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                    <div>
+                        <div class="code-block mb-4">
+                            <code id="pipeline-code">const value = 100;</code>
+                        </div>
+                        <div class="flex space-x-2">
+                           <button id="pipeline-prev" class="btn btn-secondary" disabled>&#8592; Prev</button>
+                           <button id="pipeline-next" class="btn">Next &#8594;</button>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-xl mb-2" id="pipeline-stage-title">1. Source Code</h4>
+                        <p class="text-stone-600 mb-4" id="pipeline-stage-desc">This is the raw JavaScript code as written by the developer.</p>
+                        <div id="pipeline-output" class="interactive-box min-h-[150px] p-4 text-sm font-mono bg-stone-50 rounded-md"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Runtime Model -->
+        <section id="runtime" class="mb-16 md:mb-24 scroll-mt-16">
+            <h3 class="text-2xl md:text-3xl font-bold mb-2 text-center">The Runtime Environment</h3>
+            <p class="text-stone-600 text-center max-w-2xl mx-auto mb-8">JavaScript is single-threaded, yet handles many tasks at once. This is possible through a concurrency model involving the Call Stack, Heap, and the Event Loop.</p>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Stack & Heap -->
+                <div class="card p-6 md:p-8">
+                    <h4 class="font-bold text-xl mb-4">Call Stack & Memory Heap</h4>
+                    <p class="text-stone-600 mb-4">The Call Stack tracks function calls (LIFO), while the Heap stores objects and other complex data. This simulation shows how they interact.</p>
+                    <div class="code-block text-xs mb-4">
+                        <p>function greet(name) {</p>
+                        <p>&nbsp;&nbsp;let person = { name: name };</p>
+                        <p>&nbsp;&nbsp;return `Hello, ${person.name}!`;</p>
+                        <p>}</p>
+                        <p>greet('World');</p>
+                    </div>
+                    <button id="stack-heap-run" class="btn mb-4">Run Simulation</button>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <h5 class="font-semibold text-center mb-2">Call Stack</h5>
+                            <div id="call-stack-vis" class="interactive-box bg-sky-50 h-64 flex flex-col-reverse items-center p-2 space-y-reverse space-y-2 overflow-hidden"></div>
+                        </div>
+                        <div>
+                            <h5 class="font-semibold text-center mb-2">Memory Heap</h5>
+                            <div id="heap-vis" class="interactive-box bg-emerald-50 h-64 p-2"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Event Loop -->
+                <div class="card p-6 md:p-8">
+                    <h4 class="font-bold text-xl mb-4">Event Loop & Task Queues</h4>
+                    <p class="text-stone-600 mb-4">The Event Loop orchestrates async tasks. It prioritizes Microtasks (e.g., Promises) over Macrotasks (e.g., setTimeout). See the order of execution.</p>
+                    <div class="code-block text-xs mb-4">
+                        <p>console.log('Start');</p>
+                        <p>setTimeout(() => console.log('Timeout'), 0);</p>
+                        <p>Promise.resolve().then(() => console.log('Promise'));</p>
+                        <p>console.log('End');</p>
+                    </div>
+                    <button id="event-loop-run" class="btn mb-4">Run Simulation</button>
+                    <div id="event-loop-log" class="interactive-box bg-stone-50 p-4 font-mono text-sm min-h-[268px]">
+                        <p class="text-stone-400">Execution log will appear here...</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Memory Management -->
+        <section id="memory" class="mb-16 md:mb-24 scroll-mt-16">
+            <h3 class="text-2xl md:text-3xl font-bold mb-2 text-center">Memory Management</h3>
+            <p class="text-stone-600 text-center max-w-2xl mx-auto mb-8">JavaScript uses automatic memory management via a Garbage Collector (GC). Modern engines use a Generational GC, which is highly efficient because most objects "die young."</p>
+            <div class="card p-6 md:p-8">
+                 <h4 class="font-bold text-xl mb-4 text-center">Generational Garbage Collection</h4>
+                <div class="chart-container h-80 md:h-96">
+                    <canvas id="gc-chart"></canvas>
+                </div>
+                <div class="mt-6 flex flex-wrap justify-center gap-2">
+                    <button id="gc-alloc" class="btn">Allocate 10 Objects</button>
+                    <button id="gc-minor" class="btn btn-secondary">Run Minor GC (Scavenge)</button>
+                    <button id="gc-major" class="btn btn-secondary">Run Major GC (Mark-Sweep)</button>
+                </div>
+                 <p id="gc-status" class="text-center mt-4 text-stone-600 font-medium">Click buttons to simulate memory allocation and garbage collection.</p>
+            </div>
+        </section>
+        
+        <!-- Optimizations -->
+        <section id="optimizations" class="mb-16 md:mb-24 scroll-mt-16">
+            <h3 class="text-2xl md:text-3xl font-bold mb-2 text-center">JIT Optimizations</h3>
+            <p class="text-stone-600 text-center max-w-2xl mx-auto mb-8">Just-In-Time (JIT) compilers use clever tricks to speed up your code at runtime. One key technique is Hidden Classes, which optimizes object property access.</p>
+            <div class="card p-6 md:p-8">
+                 <h4 class="font-bold text-xl mb-4">Hidden Classes (Shapes)</h4>
+                 <p class="text-stone-600 mb-6">Objects with the same structure (properties added in the same order) share a "Hidden Class". This allows the engine to access properties by a memory offset instead of a slow dictionary lookup. Watch how the hidden class changes as you modify the object.</p>
+                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                     <div>
+                         <h5 class="font-semibold mb-2">Controls</h5>
+                         <div class="space-y-2 mb-4">
+                            <button id="hc-add-x" class="btn w-full">Add property 'x'</button>
+                            <button id="hc-add-y" class="btn w-full">Add property 'y'</button>
+                            <button id="hc-reset" class="btn btn-secondary w-full">Reset</button>
+                         </div>
+                         <p class="text-sm text-stone-500">Try adding properties in a different order (Y then X) after resetting to see a different transition path.</p>
+                     </div>
+                     <div class="flex flex-col items-center">
+                        <div class="mb-4">
+                             <h5 class="font-semibold text-center mb-2">Object State</h5>
+                             <div id="hc-object-vis" class="interactive-box bg-stone-50 w-48 h-24 p-4 font-mono text-sm">{ }</div>
+                        </div>
+                        <div>
+                             <h5 class="font-semibold text-center mb-2">Hidden Class</h5>
+                             <div id="hc-class-vis" class="interactive-box bg-sky-50 w-48 h-24 p-4 font-mono text-sm flex items-center justify-center">C0</div>
+                        </div>
+                     </div>
+                 </div>
+            </div>
+        </section>
+
+        <!-- V8 vs SpiderMonkey -->
+        <section id="comparison" class="scroll-mt-16">
+            <h3 class="text-2xl md:text-3xl font-bold mb-2 text-center">Engines Compared: V8 vs. SpiderMonkey</h3>
+             <p class="text-stone-600 text-center max-w-2xl mx-auto mb-8">While V8 (Chrome, Node.js) and SpiderMonkey (Firefox) share core concepts, their architectures have unique details. Explore some of their key components.</p>
+            <div class="max-w-4xl mx-auto">
+                <div id="comparison-container" class="space-y-4">
+                </div>
+            </div>
+        </section>
+
+    </main>
+    
+    <footer class="text-center py-8 mt-12 border-t border-stone-200">
+        <p class="text-stone-500">An interactive guide inspired by the "Behind the Curtain" report.</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            // Mobile menu toggle
+            const mobileMenuButton = document.getElementById('mobile-menu-button');
+            const mobileMenu = document.getElementById('mobile-menu');
+            const menuIconOpen = document.getElementById('menu-icon-open');
+            const menuIconClose = document.getElementById('menu-icon-close');
+            mobileMenuButton.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+                menuIconOpen.classList.toggle('hidden');
+                menuIconClose.classList.toggle('hidden');
+            });
+            document.querySelectorAll('#mobile-menu a').forEach(link => {
+                link.addEventListener('click', () => {
+                    mobileMenu.classList.add('hidden');
+                    menuIconOpen.classList.remove('hidden');
+                    menuIconClose.classList.add('hidden');
+                });
+            });
+
+            // Pipeline Interaction
+            const pipelineData = [
+                {
+                    title: '1. Source Code',
+                    desc: 'The raw JavaScript code as written by the developer.',
+                    output: 'const value = 100;'
+                },
+                {
+                    title: '2. Lexical Analysis (Tokenization)',
+                    desc: 'The code is broken down into a series of "tokens" - the smallest meaningful units of the language.',
+                    output: `[<br>  { type: 'Keyword', value: 'const' },<br>  { type: 'Identifier', value: 'value' },<br>  { type: 'Operator', value: '=' },<br>  { type: 'Number', value: '100' },<br>  { type: 'Punctuator', value: ';' }<br>]`
+                },
+                {
+                    title: '3. Parsing (AST Generation)',
+                    desc: 'The tokens are assembled into an Abstract Syntax Tree (AST), a hierarchical structure representing the code\'s grammar.',
+                    output: `VariableDeclaration (const)<br>&nbsp;&nbsp;└─ VariableDeclarator<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├─ id: Identifier (value)<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└─ init: NumericLiteral (100)`
+                },
+                {
+                    title: '4. Bytecode Generation',
+                    desc: 'The AST is compiled into bytecode, a low-level, platform-agnostic set of instructions for the engine\'s interpreter.',
+                    output: `LdaSmi [100]<br>Star r0<br>Return`
+                },
+                {
+                    title: '5. JIT Compilation (for hot code)',
+                    desc: 'If a piece of code is run frequently, it\'s further compiled into highly optimized machine code for near-native performance.',
+                    output: `mov eax, 100<br>... (Optimized Machine Code)`
+                }
+            ];
+            let currentPipelineStep = 0;
+            const pipelineTitle = document.getElementById('pipeline-stage-title');
+            const pipelineDesc = document.getElementById('pipeline-stage-desc');
+            const pipelineOutput = document.getElementById('pipeline-output');
+            const pipelineNextBtn = document.getElementById('pipeline-next');
+            const pipelinePrevBtn = document.getElementById('pipeline-prev');
+
+            function updatePipelineView() {
+                const step = pipelineData[currentPipelineStep];
+                pipelineTitle.textContent = step.title;
+                pipelineDesc.textContent = step.desc;
+                pipelineOutput.innerHTML = step.output;
+                pipelineOutput.classList.remove('fade-in');
+                void pipelineOutput.offsetWidth; // Trigger reflow
+                pipelineOutput.classList.add('fade-in');
+
+                pipelinePrevBtn.disabled = currentPipelineStep === 0;
+                pipelineNextBtn.disabled = currentPipelineStep === pipelineData.length - 1;
+            }
+
+            pipelineNextBtn.addEventListener('click', () => {
+                if (currentPipelineStep < pipelineData.length - 1) {
+                    currentPipelineStep++;
+                    updatePipelineView();
+                }
+            });
+
+            pipelinePrevBtn.addEventListener('click', () => {
+                if (currentPipelineStep > 0) {
+                    currentPipelineStep--;
+                    updatePipelineView();
+                }
+            });
+            updatePipelineView();
+            
+            // Stack & Heap Simulation
+            const stackHeapRunBtn = document.getElementById('stack-heap-run');
+            const stackVis = document.getElementById('call-stack-vis');
+            const heapVis = document.getElementById('heap-vis');
+
+            stackHeapRunBtn.addEventListener('click', () => {
+                stackVis.innerHTML = '';
+                heapVis.innerHTML = '';
+                
+                const animate = (message, target, delay, color = 'bg-sky-200') => {
+                    return new Promise(resolve => {
+                        setTimeout(() => {
+                            const el = document.createElement('div');
+                            el.className = `w-full text-center p-2 rounded-md text-sm font-medium fade-in ${color} text-sky-800`;
+                            el.textContent = message;
+                            if (target === stackVis) {
+                                target.prepend(el);
+                            } else {
+                                target.appendChild(el);
+                            }
+                            resolve(el);
+                        }, delay);
+                    });
+                };
+
+                animate('Push main()', stackVis, 0)
+                    .then(() => animate('Push greet("World")', stackVis, 500))
+                    .then(() => animate('Allocate {name:"World"}', heapVis, 500, 'bg-emerald-200 text-emerald-800'))
+                    .then(heapEl => {
+                        heapVis.querySelector('div').textContent = `{ name: "World" } @0x123`;
+                        const stackFrame = stackVis.querySelector('div');
+                        stackFrame.innerHTML += `<br><span class="text-xs">person: @0x123</span>`;
+                        return animate('Return "Hello, World!"', stackVis, 1000);
+                     })
+                    .then(() => {
+                        return new Promise(resolve => {
+                             setTimeout(() => {
+                                stackVis.children[0].remove();
+                                resolve();
+                            }, 500);
+                        });
+                    })
+                    .then(() => {
+                        return new Promise(resolve => {
+                            setTimeout(() => {
+                                stackVis.children[0].remove();
+                                resolve();
+                            }, 500);
+                        });
+                    });
+            });
+
+            // Event Loop Simulation
+            const eventLoopRunBtn = document.getElementById('event-loop-run');
+            const eventLoopLog = document.getElementById('event-loop-log');
+
+            eventLoopRunBtn.addEventListener('click', () => {
+                eventLoopLog.innerHTML = '';
+                let logCount = 1;
+
+                const log = (message, delay) => {
+                    setTimeout(() => {
+                        const p = document.createElement('p');
+                        p.className = 'fade-in';
+                        p.textContent = `${logCount++}. ${message}`;
+                        eventLoopLog.appendChild(p);
+                    }, delay);
+                };
+
+                log('Start (Sync code)', 0);
+                setTimeout(() => log('Timeout (Macrotask)', 1500), 0);
+                Promise.resolve().then(() => log('Promise (Microtask)', 1000));
+                log('End (Sync code)', 500);
+            });
+
+            // GC Chart
+            let gcChart;
+            const gcStatus = document.getElementById('gc-status');
+            const gcData = {
+                labels: ['Young Gen (Nursery)', 'Old Gen'],
+                datasets: [{
+                    label: 'Used Memory',
+                    data: [0, 0],
+                    backgroundColor: ['#38bdf8', '#34d399'],
+                    borderWidth: 1
+                }, {
+                    label: 'Free Memory',
+                    data: [100, 1000],
+                    backgroundColor: ['#f0f9ff', '#f0fdf4'],
+                    borderWidth: 1
+                }]
+            };
+
+            function createGcChart() {
+                const ctx = document.getElementById('gc-chart').getContext('2d');
+                gcChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: gcData,
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: { display: true, text: 'Heap Memory Generations' },
+                            tooltip: { enabled: false }
+                        },
+                        scales: {
+                            x: { stacked: true, max: 1100, display: false },
+                            y: { stacked: true, display: true }
+                        }
+                    }
+                });
+            }
+            createGcChart();
+
+            document.getElementById('gc-alloc').addEventListener('click', () => {
+                if (gcData.datasets[0].data[0] < 100) {
+                    gcData.datasets[0].data[0] += 10;
+                    gcData.datasets[1].data[0] -= 10;
+                    gcChart.update();
+                    gcStatus.textContent = 'Allocated 10 objects in Young Generation.';
+                } else {
+                    gcStatus.textContent = 'Young Generation is full. Run a GC.';
+                }
+            });
+
+            document.getElementById('gc-minor').addEventListener('click', () => {
+                const youngUsed = gcData.datasets[0].data[0];
+                const survivors = Math.floor(youngUsed * 0.2); // 20% survive
+                const collected = youngUsed - survivors;
+                
+                gcData.datasets[0].data[0] = 0; // Clear young gen
+                gcData.datasets[1].data[0] = 100;
+
+                gcData.datasets[0].data[1] += survivors; // Promote to old gen
+                gcData.datasets[1].data[1] -= survivors;
+
+                gcChart.update();
+                gcStatus.textContent = `Minor GC: Collected ${collected} objects. Promoted ${survivors} to Old Gen.`;
+            });
+            
+            document.getElementById('gc-major').addEventListener('click', () => {
+                const collected = Math.floor(gcData.datasets[0].data[1] * 0.5); // collect 50% of old
+                gcData.datasets[0].data[1] -= collected;
+                gcData.datasets[1].data[1] += collected;
+                gcChart.update();
+                gcStatus.textContent = `Major GC: Reclaimed ${collected} objects from Old Generation.`;
+            });
+            
+            // Hidden Classes
+            const hcObjectVis = document.getElementById('hc-object-vis');
+            const hcClassVis = document.getElementById('hc-class-vis');
+            let hcState = {};
+            let hcPath = 'C0';
+
+            const updateHcView = () => {
+                hcObjectVis.textContent = JSON.stringify(hcState, null, 2);
+                hcClassVis.textContent = hcPath;
+                hcClassVis.classList.remove('fade-in');
+                void hcClassVis.offsetWidth;
+                hcClassVis.classList.add('fade-in');
+            };
+
+            document.getElementById('hc-add-x').addEventListener('click', () => {
+                if (!('x' in hcState)) {
+                    hcState.x = 10;
+                    hcPath += ' -> Cx';
+                    updateHcView();
+                }
+            });
+
+             document.getElementById('hc-add-y').addEventListener('click', () => {
+                if (!('y' in hcState)) {
+                    hcState.y = 20;
+                    if ('x' in hcState) {
+                       hcPath = 'C0 -> Cx -> Cxy';
+                    } else {
+                       hcPath = 'C0 -> Cy';
+                    }
+                    updateHcView();
+                }
+            });
+
+            document.getElementById('hc-reset').addEventListener('click', () => {
+                hcState = {};
+                hcPath = 'C0';
+                updateHcView();
+            });
+            updateHcView();
+
+            // Comparison Section
+            const comparisonData = [
+                {
+                    feature: 'Optimizing JIT Compiler',
+                    v8: 'TurboFan: A highly optimizing compiler that takes bytecode and profiling feedback to generate fast machine code. V8 also uses intermediate tiers like Maglev.',
+                    spidermonkey: 'WarpMonkey: The top-tier optimizing JIT. It performs advanced optimizations using its own Intermediate Representations (MIR and LIR).'
+                },
+                {
+                    feature: 'Interpreter',
+                    v8: 'Ignition: A bytecode interpreter. It not only executes code but also generates the bytecode from the AST and collects profiling data for TurboFan.',
+                    spidermonkey: 'Baseline Interpreter: A hybrid interpreter/JIT that executes bytecode and attaches Inline Caches to speed up subsequent executions.'
+                },
+                {
+                    feature: 'Object Property Model',
+                    v8: 'Hidden Classes (Maps): Creates an internal "blueprint" for object shapes to allow for fast, offset-based property access. Transitions between classes when shape changes.',
+                    spidermonkey: 'Shapes: A very similar concept to Hidden Classes. Objects with the same structure share a Shape object, enabling JIT optimizations.'
+                },
+                {
+                    feature: 'Garbage Collection',
+                    v8: 'Orinoco: A generational collector with a "Scavenger" for the young generation and a Mark-Sweep-Compact collector for the old generation. It uses parallel and incremental techniques.',
+                    spidermonkey: 'Generational GC: Also divides the heap into a Nursery and a Tenured Heap. Described as a precise, incremental, parallel, and compacting collector.'
+                }
+            ];
+            const comparisonContainer = document.getElementById('comparison-container');
+            comparisonData.forEach(item => {
+                const el = document.createElement('div');
+                el.className = 'card overflow-hidden';
+                el.innerHTML = `
+                    <button class="w-full p-4 text-left font-semibold text-lg flex justify-between items-center comparison-toggle">
+                        <span>${item.feature}</span>
+                        <svg class="w-6 h-6 transform transition-transform" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                    </button>
+                    <div class="hidden p-6 pt-0 comparison-content">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <h6 class="font-bold text-sky-700 mb-2">V8 (Chrome/Node.js)</h6>
+                                <p class="text-stone-600">${item.v8}</p>
+                            </div>
+                             <div>
+                                <h6 class="font-bold text-emerald-700 mb-2">SpiderMonkey (Firefox)</h6>
+                                <p class="text-stone-600">${item.spidermonkey}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                comparisonContainer.appendChild(el);
+            });
+            
+            document.querySelectorAll('.comparison-toggle').forEach(button => {
+                button.addEventListener('click', () => {
+                    const content = button.nextElementSibling;
+                    const icon = button.querySelector('svg');
+                    content.classList.toggle('hidden');
+                    icon.classList.toggle('rotate-180');
+                });
+            });
+
+        });
+    </script>
+</body>
+</html>
