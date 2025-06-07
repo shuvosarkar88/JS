@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infographic: The World of JavaScript Execution Contexts</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Brilliant Blues -->
+    <!-- Application Structure Plan: The infographic is designed as a single, top-to-bottom scrollable page, creating a narrative journey from foundational concepts to more complex ones. The structure is as follows: 1. Hero section with a hook. 2. A two-phase diagram to explain EC creation/execution. 3. A comparative chart for EC types. 4. A breakdown of an EC's components. 5. A visual walkthrough of the Scope Chain. 6. An animated Call Stack diagram. 7. A final section on Closures and 'this' binding. This linear, story-driven approach is ideal for an infographic format, guiding the user through the interconnected concepts logically and preventing them from getting lost, which is superior to a multi-page or tabbed layout for this type of content. -->
+    <!-- Visualization & Content Choices:
+        - Big Number Stat: Goal: Inform. Method: Large styled text (HTML/CSS) to create an initial impact.
+        - Two-Phase Process: Goal: Organize. Method: HTML/CSS Flexbox diagram to clearly separate and explain the Creation and Execution phases. Confirms NO SVG.
+        - EC Types Comparison: Goal: Compare. Method: Chart.js Horizontal Bar Chart to visually represent the distinctions from the report's Table 1. Chosen for its clarity in comparing categorical data. Confirms NO SVG.
+        - EC Components: Goal: Organize. Method: HTML/CSS diagram to show the composition of an EC, making the abstract concept tangible. Confirms NO SVG.
+        - Scope Chain: Goal: Show Relationships/Process. Method: A structured HTML/CSS diagram with styled borders and arrows to visually trace the lookup path. Confirms NO SVG.
+        - Call Stack Animation: Goal: Show Change/Process. Method: HTML/CSS elements representing stack frames, manipulated with basic JavaScript to simulate the push/pop LIFO process, making the dynamic nature of the stack clear. Confirms NO SVG.
+        - Closures Diagram: Goal: Show Relationships. Method: HTML/CSS diagram visually representing the function "closing over" its lexical environment. Confirms NO SVG.
+        - 'this' Binding Rules: Goal: Inform/Compare. Method: A series of styled HTML/CSS cards, which is more readable and scannable than a dense table. Confirms NO SVG.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0B2447;
+            color: #A5D7E8;
+        }
+        .card {
+            background-color: #19376D;
+        }
+        .text-accent {
+            color: #A5D7E8;
+        }
+        .text-main-header {
+            color: #ffffff;
+        }
+        .text-subtle {
+            color: #576CBC;
+        }
+        .bg-accent {
+            background-color: #A5D7E8;
+        }
+        .border-accent {
+           border-color: #A5D7E8;
+        }
+        .border-light {
+            border-color: #576CBC;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 350px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+                max-height: 400px;
+            }
+        }
+        .stack-frame {
+            transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+            transform-origin: bottom;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20">
+
+        <header class="text-center mb-16 md:mb-24">
+            <h1 class="text-4xl md:text-6xl font-black text-main-header tracking-tight">THE JAVASCRIPT EXECUTION MODEL</h1>
+            <p class="mt-4 text-xl md:text-2xl text-accent max-w-3xl mx-auto">An infographic on how JavaScript understands, organizes, and runs your code through Execution Contexts.</p>
+        </header>
+
+        <section id="introduction" class="mb-16 md:mb-24 text-center">
+            <div class="max-w-4xl mx-auto">
+                 <h2 class="text-3xl md:text-4xl font-bold text-main-header mb-4">What is an Execution Context?</h2>
+                <p class="text-lg md:text-xl text-accent leading-relaxed">
+                    Think of an Execution Context (EC) as the environment where your JavaScript code lives and breathes. It's a container holding all the information needed to run a piece of code—its variables, its functions, and the all-important `this` keyword. Since JavaScript is single-threaded, it can only handle one EC at a time.
+                </p>
+            </div>
+        </section>
+
+        <section id="phases" class="mb-16 md:mb-24">
+            <div class="text-center mb-8">
+                <h2 class="text-3xl md:text-4xl font-bold text-main-header">The Two-Phase Process</h2>
+                <p class="mt-2 text-lg text-accent max-w-3xl mx-auto">Every context is created in two distinct phases before any code is run, which explains behaviors like hoisting.</p>
+            </div>
+            <div class="card rounded-xl shadow-2xl p-6 md:p-8">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+                    <div class="border-2 border-dashed border-light p-6 rounded-lg">
+                        <h3 class="text-2xl font-bold text-accent mb-3">1. Creation Phase</h3>
+                        <p class="mb-4">The engine scans the code and sets up the environment *before* execution.</p>
+                        <ul class="space-y-2 text-left">
+                            <li class="flex items-start"><span class="text-accent font-bold text-xl mr-3">✓</span><div><strong class="text-main-header">Memory Allocated:</strong> Space is set up for variables and functions.</div></li>
+                            <li class="flex items-start"><span class="text-accent font-bold text-xl mr-3">✓</span><div><strong class="text-main-header">`var` is Hoisted:</strong> `var` variables are initialized to `undefined`.</div></li>
+                            <li class="flex items-start"><span class="text-accent font-bold text-xl mr-3">✓</span><div><strong class="text-main-header">Functions Stored:</strong> Function declarations are stored in memory completely.</div></li>
+                        </ul>
+                    </div>
+                    <div class="border-2 border-dashed border-light p-6 rounded-lg">
+                        <h3 class="text-2xl font-bold text-accent mb-3">2. Execution Phase</h3>
+                        <p class="mb-4">The engine runs the code line-by-line, using the environment set up in phase one.</p>
+                        <ul class="space-y-2 text-left">
+                           <li class="flex items-start"><span class="text-accent font-bold text-xl mr-3">✓</span><div><strong class="text-main-header">Variables Assigned:</strong> Values are assigned to variables.</div></li>
+                           <li class="flex items-start"><span class="text-accent font-bold text-xl mr-3">✓</span><div><strong class="text-main-header">Code Executed:</strong> Logic is run, and functions are called.</div></li>
+                           <li class="flex items-start"><span class="text-accent font-bold text-xl mr-3">✓</span><div><strong class="text-main-header">New Contexts Created:</strong> Function calls create new execution contexts.</div></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <section id="context-types" class="mb-16 md:mb-24">
+            <div class="text-center mb-8">
+                <h2 class="text-3xl md:text-4xl font-bold text-main-header">Three Types of Contexts</h2>
+                <p class="mt-2 text-lg text-accent max-w-3xl mx-auto">JavaScript creates different contexts depending on where the code is located and how it's called.</p>
+            </div>
+            <div class="card rounded-xl shadow-2xl p-6 md:p-8">
+                <div class="chart-container">
+                    <canvas id="contextTypesChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <section id="components" class="mb-16 md:mb-24">
+            <div class="text-center mb-8">
+                <h2 class="text-3xl md:text-4xl font-bold text-main-header">Inside An Execution Context</h2>
+                <p class="mt-2 text-lg text-accent max-w-3xl mx-auto">Each context has three core logical components that define its environment.</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="card rounded-lg p-6 text-center shadow-lg">
+                    <div class="text-4xl mb-3">📖</div>
+                    <h3 class="text-xl font-bold text-main-header">Lexical Environment</h3>
+                    <p class="mt-2 text-sm">Holds all identifier (variable/function) mappings and, crucially, a reference to its outer (parent) scope.</p>
+                </div>
+                <div class="card rounded-lg p-6 text-center shadow-lg">
+                    <div class="text-4xl mb-3">📝</div>
+                    <h3 class="text-xl font-bold text-main-header">Variable Environment</h3>
+                    <p class="mt-2 text-sm">A specific part of the Lexical Environment that handles `var` declarations and function hoisting.</p>
+                </div>
+                <div class="card rounded-lg p-6 text-center shadow-lg">
+                     <div class="text-4xl mb-3">👉</div>
+                    <h3 class="text-xl font-bold text-main-header">`this` Binding</h3>
+                    <p class="mt-2 text-sm">A dynamic reference to an object, determined by how the function is called at runtime.</p>
+                </div>
+            </div>
+        </section>
+        
+        <section id="scope-chain" class="mb-16 md:mb-24">
+             <div class="text-center mb-8">
+                <h2 class="text-3xl md:text-4xl font-bold text-main-header">The Scope Chain</h2>
+                <p class="mt-2 text-lg text-accent max-w-3xl mx-auto">When a variable is needed, JS looks in the current scope. If it's not there, it travels up the chain of outer scopes until it's found or it reaches the global scope.</p>
+            </div>
+             <div class="card rounded-xl shadow-2xl p-6 md:p-8">
+                <div class="relative p-4">
+                    <div class="scope-box border-2 border-light p-4 rounded-lg">
+                        <h4 class="font-bold text-subtle text-sm">Global Scope</h4>
+                        <pre class="bg-gray-900/50 text-white p-2 rounded mt-1 text-xs">let globalVar = "🌍";</pre>
+                        <div class="scope-box mt-4 border-2 border-light p-4 rounded-lg ml-4">
+                            <h4 class="font-bold text-subtle text-sm">outerFunction Scope</h4>
+                            <pre class="bg-gray-900/50 text-white p-2 rounded mt-1 text-xs">let outerVar = "🪐";</pre>
+                            <div class="scope-box mt-4 border-2 border-accent p-4 rounded-lg ml-4 bg-blue-900/30">
+                                <h4 class="font-bold text-accent text-sm">innerFunction Scope</h4>
+                                <pre class="bg-gray-900/50 text-white p-2 rounded mt-1 text-xs">console.log(globalVar);<br>console.log(outerVar);</pre>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="absolute top-1/2 left-1/4 transform -translate-x-1/2 -translate-y-1/2">
+                        <p class="text-accent font-bold text-2xl -rotate-45">&uarr;</p>
+                        <p class="text-xs text-subtle -mt-2">Outer Reference</p>
+                    </div>
+                     <div class="absolute top-3/4 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                        <p class="text-accent font-bold text-2xl -rotate-45">&uarr;</p>
+                        <p class="text-xs text-subtle -mt-2">Outer Reference</p>
+                    </div>
+                </div>
+             </div>
+        </section>
+
+        <section id="call-stack" class="mb-16 md:mb-24">
+            <div class="text-center mb-8">
+                <h2 class="text-3xl md:text-4xl font-bold text-main-header">The Call Stack in Action</h2>
+                <p class="mt-2 text-lg text-accent max-w-3xl mx-auto">The Call Stack is a LIFO (Last-In, First-Out) structure that tracks active execution contexts. Watch it manage a recursive `countdown(2)`.</p>
+            </div>
+            <div class="card rounded-xl shadow-2xl p-6 md:p-8">
+                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                    <div class="relative h-72 w-full max-w-xs mx-auto bg-gray-900/50 rounded-lg p-2 flex flex-col-reverse justify-start" id="stack-visual">
+                         <div class="stack-frame bg-slate-600 text-white p-3 rounded-md text-center font-semibold">Global Context</div>
+                    </div>
+                    <div class="text-center md:text-left">
+                        <p class="text-lg font-medium text-accent mb-4">Click to animate the stack:</p>
+                        <div class="flex flex-wrap justify-center md:justify-start gap-3">
+                             <button id="stack-btn-1" class="stack-btn bg-accent text-blue-900 font-bold py-2 px-4 rounded-lg">Call countdown(2)</button>
+                             <button id="stack-btn-2" class="stack-btn bg-accent text-blue-900 font-bold py-2 px-4 rounded-lg">Call countdown(1)</button>
+                             <button id="stack-btn-3" class="stack-btn bg-accent text-blue-900 font-bold py-2 px-4 rounded-lg">Call countdown(0)</button>
+                             <button id="stack-btn-4" class="stack-btn bg-accent text-blue-900 font-bold py-2 px-4 rounded-lg">Base Case: Pop All</button>
+                             <button id="stack-reset" class="bg-slate-500 text-white font-bold py-2 px-4 rounded-lg">Reset</button>
+                        </div>
+                    </div>
+                 </div>
+            </div>
+        </section>
+        
+        <section id="closures-this" class="mb-16 md:mb-24">
+             <div class="text-center mb-12">
+                <h2 class="text-3xl md:text-4xl font-bold text-main-header">Key Consequences & Concepts</h2>
+                <p class="mt-2 text-lg text-accent max-w-3xl mx-auto">The entire execution model gives rise to powerful features like Closures and the dynamic `this` keyword.</p>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12">
+                <div>
+                    <h3 class="text-2xl font-bold text-accent mb-4">Closures: Functions that Remember</h3>
+                    <p class="mb-4">A closure is a function bundled with its "birth" lexical environment. It remembers the variables from the scope where it was created, even after that scope has closed.</p>
+                    <div class="card rounded-lg p-6 shadow-lg">
+                        <pre class="bg-gray-900/50 text-white p-3 rounded text-sm"><code>function makeAdder(x) {
+  // x is "closed over"
+  return function(y) {
+    return x + y;
+  };
+}
+
+const add5 = makeAdder(5);
+// add5 is a closure that "remembers" x = 5
+console.log(add5(10)); // 15</code></pre>
+                    </div>
+                </div>
+                 <div>
+                    <h3 class="text-2xl font-bold text-accent mb-4">The Dynamic `this` Keyword</h3>
+                    <p class="mb-4">Unlike scope, the `this` keyword's value is not static. It's determined dynamically by *how* a function is called.</p>
+                    <div class="card rounded-lg p-6 shadow-lg">
+                        <ul class="space-y-3">
+                            <li><strong>Default Binding:</strong> Called alone, `this` is the global object (or `undefined` in strict mode).</li>
+                            <li><strong>Implicit Binding:</strong> In `obj.method()`, `this` is `obj`.</li>
+                            <li><strong>Explicit Binding:</strong> With `.call()` or `.apply()`, `this` is whatever you pass in.</li>
+                            <li><strong>New Binding:</strong> In `new Constructor()`, `this` is the new instance being created.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const ctx = document.getElementById('contextTypesChart').getContext('2d');
+            
+            const wrapLabel = (label) => {
+                const max_width = 16;
+                const words = label.split(' ');
+                let lines = [];
+                let currentLine = '';
+                words.forEach(word => {
+                    if ((currentLine + ' ' + word).length > max_width) {
+                        lines.push(currentLine.trim());
+                        currentLine = word;
+                    } else {
+                        currentLine += ' ' + word;
+                    }
+                });
+                lines.push(currentLine.trim());
+                return lines;
+            };
+
+            const labels = ['Global Execution Context', 'Function Execution Context', 'Eval Execution Context'];
+
+            const contextTypesChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels.map(l => wrapLabel(l)),
+                    datasets: [
+                        {
+                            label: 'Creation Trigger',
+                            data: [1, 2, 3],
+                            backgroundColor: '#576CBC',
+                            borderColor: '#A5D7E8',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Uniqueness',
+                            data: [1, 3, 3],
+                            backgroundColor: '#19376D',
+                            borderColor: '#A5D7E8',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            ticks: {
+                                color: '#A5D7E8',
+                                callback: function(value) {
+                                    const labels = ['', 'Script Start', 'Function Call', 'Per Call'];
+                                    return labels[value] || '';
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(165, 215, 232, 0.2)'
+                            }
+                        },
+                        y: {
+                            ticks: {
+                                color: '#A5D7E8',
+                                font: {
+                                    size: 12,
+                                    weight: 'bold'
+                                }
+                            },
+                             grid: {
+                                color: 'rgba(165, 215, 232, 0.2)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#A5D7E8'
+                            }
+                        },
+                        tooltip: {
+                             callbacks: {
+                                title: function(tooltipItems) {
+                                    const item = tooltipItems[0];
+                                    let label = item.chart.data.labels[item.dataIndex];
+                                    return Array.isArray(label) ? label.join(' ') : label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            const stackVisual = document.getElementById('stack-visual');
+            const originalStack = stackVisual.innerHTML;
+
+            function pushToStack(text, colorClass) {
+                 const frame = document.createElement('div');
+                 frame.textContent = text;
+                 frame.className = `stack-frame p-3 rounded-md text-center font-semibold text-white ${colorClass}`;
+                 frame.style.transform = 'scale(0)';
+                 stackVisual.appendChild(frame);
+                 setTimeout(() => { frame.style.transform = 'scale(1)'; }, 50);
+            }
+            
+            function popFromStack() {
+                const topFrame = stackVisual.lastChild;
+                if(topFrame && !topFrame.textContent.includes('Global')) {
+                    topFrame.style.transform = 'scale(0)';
+                    setTimeout(() => { topFrame.remove() }, 500);
+                }
+            }
+
+            document.getElementById('stack-btn-1').onclick = () => { if(stackVisual.children.length === 1) pushToStack('countdown(2)', 'bg-sky-500'); };
+            document.getElementById('stack-btn-2').onclick = () => { if(stackVisual.children.length === 2) pushToStack('countdown(1)', 'bg-teal-500'); };
+            document.getElementById('stack-btn-3').onclick = () => { if(stackVisual.children.length === 3) pushToStack('countdown(0)', 'bg-emerald-500'); };
+            document.getElementById('stack-btn-4').onclick = () => {
+                popFromStack();
+                setTimeout(popFromStack, 200);
+                setTimeout(popFromStack, 400);
+            };
+            document.getElementById('stack-reset').onclick = () => { stackVisual.innerHTML = originalStack; };
+        });
+    </script>
+
+</body>
+</html>

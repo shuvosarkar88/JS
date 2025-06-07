@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive JavaScript: Hoisting, TDZ, & Scope</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Calm Code (Based on Tailwind's stone/slate neutrals with a muted blue accent) -->
+    <!-- Application Structure Plan: A single-page application with a sticky top navigation for easy access to the main topics: Hoisting, TDZ, Scope, and Pitfalls. This non-linear structure allows users to explore concepts in any order. The layout uses interactive components like code simulators and animated diagrams instead of static text to make abstract concepts tangible and improve learning retention. This task-oriented, exploratory design is superior to a linear report format for a technical learning tool. -->
+    <!-- Visualization & Content Choices:
+    - Hoisting: Goal: Compare keyword behaviors. Method: Tab-based interactive "Hoisting Simulator" showing code transformation. Justification: Visually demonstrates the abstract hoisting concept. Library: Vanilla JS.
+    - TDZ: Goal: Explain the temporal nature of the dead zone. Method: Animated timeline highlighting the TDZ period for a variable. Justification: Makes a time-based concept spatially understandable. Library: Vanilla JS.
+    - Scope Chain: Goal: Illustrate variable lookup. Method: Interactive nested-box diagram that animates the lookup path on user click. Justification: Clearly shows the unidirectional, hierarchical search. Library: Vanilla JS.
+    - Keyword Comparison: Goal: Summarize keyword features. Method: Bar chart comparing scope, hoisting, and TDZ. Justification: Provides a quick, scannable visual overview. Library: Chart.js.
+    - Pitfalls: Goal: Show common errors. Method: Interactive code cards with a "toggle solution" button. Justification: Encourages active problem-solving. Library: Vanilla JS. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* slate-50 */
+            color: #1e293b; /* slate-800 */
+        }
+        .fira-code {
+            font-family: 'Fira Code', monospace;
+        }
+        .nav-link {
+            transition: color 0.2s, border-color 0.2s;
+        }
+        .nav-link.active {
+            color: #3b82f6; /* blue-500 */
+            border-bottom-color: #3b82f6;
+        }
+        .interactive-card {
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .interactive-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+        .scope-box {
+            transition: all 0.5s ease-in-out;
+            border-width: 2px;
+        }
+        .highlight-search {
+            animation: pulse-light 1.5s infinite;
+        }
+        @keyframes pulse-light {
+            0%, 100% { background-color: rgba(59, 130, 246, 0.2); }
+            50% { background-color: rgba(59, 130, 246, 0.4); }
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 400px;
+            max-height: 50vh;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <header class="bg-white/80 backdrop-blur-lg sticky top-0 z-50 shadow-sm">
+        <nav class="container mx-auto px-4">
+            <div class="flex items-center justify-between h-16">
+                <h1 class="text-xl md:text-2xl font-bold text-slate-900">JS Execution Context</h1>
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="#hoisting" class="nav-link font-medium text-slate-600 hover:text-blue-500 border-b-2 border-transparent">Hoisting</a>
+                    <a href="#tdz" class="nav-link font-medium text-slate-600 hover:text-blue-500 border-b-2 border-transparent">TDZ</a>
+                    <a href="#scope" class="nav-link font-medium text-slate-600 hover:text-blue-500 border-b-2 border-transparent">Scope</a>
+                    <a href="#pitfalls" class="nav-link font-medium text-slate-600 hover:text-blue-500 border-b-2 border-transparent">Pitfalls</a>
+                </div>
+                 <div class="md:hidden">
+                    <select id="mobile-nav" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                        <option value="#intro">Home</option>
+                        <option value="#hoisting">Hoisting</option>
+                        <option value="#tdz">TDZ</option>
+                        <option value="#scope">Scope</option>
+                        <option value="#pitfalls">Pitfalls</option>
+                    </select>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container mx-auto p-4 md:p-8">
+
+        <section id="intro" class="text-center py-16">
+            <h2 class="text-4xl md:text-5xl font-bold text-slate-900 mb-4">Navigate JavaScript's Core</h2>
+            <p class="max-w-3xl mx-auto text-lg text-slate-600">
+                Understand the essential concepts of Hoisting, the Temporal Dead Zone (TDZ), and Scope. This interactive guide demystifies how JavaScript handles variables and functions behind the scenes, turning complex theory into practical knowledge.
+            </p>
+        </section>
+
+        <section id="hoisting" class="py-16 scroll-mt-16">
+            <h2 class="text-3xl font-bold text-center mb-2 text-slate-900">I. Demystifying Hoisting</h2>
+            <p class="max-w-3xl mx-auto text-center text-slate-600 mb-12">
+                Hoisting isn't code moving; it's JavaScript's compile-time behavior of registering declarations before execution. This means the engine knows about your variables and functions before their lines are run. Interact with the simulator below to see how different declaration types are "hoisted" and initialized.
+            </p>
+
+            <div class="bg-white p-6 rounded-xl shadow-lg max-w-4xl mx-auto">
+                <div class="mb-4 border-b border-slate-200">
+                    <nav class="-mb-px flex space-x-6" id="hoisting-tabs">
+                        <button data-target="hoist-var" class="hoist-tab active-tab whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm text-blue-600 border-blue-500">var</button>
+                        <button data-target="hoist-let" class="hoist-tab whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm text-slate-500 hover:text-slate-700 hover:border-slate-300 border-transparent">let</button>
+                        <button data-target="hoist-const" class="hoist-tab whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm text-slate-500 hover:text-slate-700 hover:border-slate-300 border-transparent">const</button>
+                        <button data-target="hoist-func" class="hoist-tab whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm text-slate-500 hover:text-slate-700 hover:border-slate-300 border-transparent">function</button>
+                        <button data-target="hoist-class" class="hoist-tab whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm text-slate-500 hover:text-slate-700 hover:border-slate-300 border-transparent">class</button>
+                    </nav>
+                </div>
+                
+                <div id="hoisting-content">
+                    <div class="grid md:grid-cols-2 gap-6 items-center">
+                        <div>
+                            <h3 class="font-semibold text-lg mb-2">Code As Written</h3>
+                            <pre class="fira-code bg-slate-800 text-white p-4 rounded-lg text-sm overflow-x-auto"><code id="hoist-code-before"></code></pre>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-lg mb-2">How the Engine Sees It (Conceptually)</h3>
+                            <pre class="fira-code bg-slate-100 text-slate-800 p-4 rounded-lg text-sm overflow-x-auto"><code id="hoist-code-after"></code></pre>
+                        </div>
+                    </div>
+                    <div id="hoist-explanation" class="mt-4 p-4 bg-blue-50 border-l-4 border-blue-400 text-blue-800 rounded-r-lg"></div>
+                </div>
+            </div>
+        </section>
+
+        <section id="tdz" class="py-16 scroll-mt-16">
+            <h2 class="text-3xl font-bold text-center mb-2 text-slate-900">II. The Temporal Dead Zone (TDZ)</h2>
+            <p class="max-w-3xl mx-auto text-center text-slate-600 mb-12">
+                The TDZ is a safety feature for `let` and `const`. It's the period from when a scope is entered until the variable's declaration is executed. During this time, the variable exists but cannot be accessed. This simulation shows the TDZ in action, preventing errors from using uninitialized variables.
+            </p>
+            <div class="bg-white p-6 rounded-xl shadow-lg max-w-2xl mx-auto interactive-card">
+                <div class="fira-code bg-slate-800 text-white p-4 rounded-lg text-sm relative">
+                    <div id="tdz-line" class="absolute left-0 w-full h-6 bg-green-500/20 transition-all duration-500" style="top: 1.5rem;"></div>
+                    <button id="tdz-run-btn" class="absolute bottom-4 right-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition-colors">Run Simulation</button>
+                    <pre id="tdz-code-display" class="relative z-10 whitespace-pre-wrap"></pre>
+                </div>
+                <div id="tdz-status" class="mt-4 p-4 font-mono text-center rounded-lg bg-slate-100">Click "Run Simulation" to start</div>
+            </div>
+        </section>
+
+        <section id="scope" class="py-16 scroll-mt-16">
+            <h2 class="text-3xl font-bold text-center mb-2 text-slate-900">III. JavaScript Scopes & The Scope Chain</h2>
+            <p class="max-w-3xl mx-auto text-center text-slate-600 mb-12">
+                Scope determines where variables are accessible. JavaScript uses lexical scoping, meaning scope is defined by the code's structure. When a variable is used, the engine searches the "scope chain"—from the current scope outwards to the global scope. Interact with the diagram to see this lookup process live.
+            </p>
+            <div class="grid lg:grid-cols-2 gap-8">
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h3 class="font-semibold text-lg mb-4 text-center">Scope Chain Visualizer</h3>
+                    <div id="scope-diagram" class="relative p-4 bg-slate-50 rounded-lg border-2 border-slate-200">
+                        <div id="scope-global" class="scope-box p-4 border-red-300 rounded-lg bg-red-50">
+                            <span class="font-bold text-red-700">Global Scope</span>
+                            <div class="fira-code text-sm mt-2 text-red-900">let globalVar = "🌍"</div>
+                            <div id="scope-outer" class="scope-box mt-4 p-4 border-blue-300 rounded-lg bg-blue-50">
+                                <span class="font-bold text-blue-700">outerFunc Scope</span>
+                                <div class="fira-code text-sm mt-2 text-blue-900">let outerVar = "🪐"</div>
+                                <div id="scope-inner" class="scope-box mt-4 p-4 border-green-300 rounded-lg bg-green-50">
+                                    <span class="font-bold text-green-700">innerFunc Scope</span>
+                                    <div class="fira-code text-sm mt-2 text-green-900">let innerVar = "🚀"</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                     <h3 class="font-semibold text-lg mb-4">Click a variable to find it:</h3>
+                     <div class="fira-code bg-slate-800 text-white p-4 rounded-lg text-sm">
+                        <p>// Global Scope</p>
+                        <p>let globalVar = "Global";</p><br/>
+                        <p>function outerFunc() {</p>
+                        <p>&nbsp;&nbsp;let outerVar = "Outer";</p><br/>
+                        <p>&nbsp;&nbsp;function innerFunc() {</p>
+                        <p>&nbsp;&nbsp;&nbsp;&nbsp;let innerVar = "Inner";</p><br/>
+                        <p>&nbsp;&nbsp;&nbsp;&nbsp;console.log(
+                            <button data-var="innerVar" class="scope-var-btn text-green-400 hover:underline">innerVar</button>
+                        );</p>
+                        <p>&nbsp;&nbsp;&nbsp;&nbsp;console.log(
+                            <button data-var="outerVar" class="scope-var-btn text-blue-400 hover:underline">outerVar</button>
+                        );</p>
+                        <p>&nbsp;&nbsp;&nbsp;&nbsp;console.log(
+                            <button data-var="globalVar" class="scope-var-btn text-red-400 hover:underline">globalVar</button>
+                        );</p>
+                         <p>&nbsp;&nbsp;&nbsp;&nbsp;console.log(
+                            <button data-var="notFound" class="scope-var-btn text-yellow-400 hover:underline">nonExistentVar</button>
+                        );</p>
+                        <p>&nbsp;&nbsp;}</p>
+                        <p>&nbsp;&nbsp;innerFunc();</p>
+                        <p>}</p>
+                        <p>outerFunc();</p>
+                     </div>
+                     <div id="scope-log" class="mt-4 p-4 font-mono text-sm bg-slate-100 rounded-lg h-24 overflow-y-auto"></div>
+                </div>
+            </div>
+             <div class="mt-12">
+                <h3 class="text-2xl font-bold text-center mb-4 text-slate-900">Keyword Comparison</h3>
+                <div class="chart-container">
+                    <canvas id="scopeChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <section id="pitfalls" class="py-16 scroll-mt-16">
+            <h2 class="text-3xl font-bold text-center mb-2 text-slate-900">IV. Common Pitfalls & Best Practices</h2>
+             <p class="max-w-3xl mx-auto text-center text-slate-600 mb-12">
+                Understanding these concepts helps avoid common bugs. The loose rules of `var` and accidental global variables can cause issues that modern JavaScript (`let`, `const`, strict mode) solves. Explore these classic pitfalls and their solutions.
+            </p>
+            <div class="grid md:grid-cols-1 lg:grid-cols-2 gap-8">
+
+                <div class="bg-white p-6 rounded-xl shadow-lg interactive-card">
+                    <h3 class="font-semibold text-lg mb-2">Pitfall 1: Loops & Closures with `var`</h3>
+                    <p class="text-slate-600 text-sm mb-4">All `setTimeout` callbacks reference the same `i`, which is `3` by the time they run. This is because `var` is function-scoped, not block-scoped.</p>
+                    <pre class="fira-code bg-slate-800 text-white p-4 rounded-lg text-sm mb-4">for (var i = 0; i < 3; i++) {
+  setTimeout(function() {
+    console.log(i); // Logs 3, three times
+  }, 100);
+}</pre>
+                    <div class="solution-container">
+                        <button class="toggle-solution-btn bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold py-2 px-3 rounded">Show Solution</button>
+                        <div class="solution-content hidden mt-4 p-4 bg-green-50 border-l-4 border-green-400 rounded-r-lg">
+                            <h4 class="font-semibold text-green-800">Solution: Use `let`</h4>
+                            <p class="text-sm text-green-700 mb-2">`let` creates a new block-scoped `i` for each loop iteration, so each closure captures a unique value (0, 1, 2).</p>
+                            <pre class="fira-code bg-slate-700 p-2 rounded text-xs">for (let i = 0; i < 3; i++) { ... }</pre>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-lg interactive-card">
+                    <h3 class="font-semibold text-lg mb-2">Pitfall 2: Unintended Global Variables</h3>
+                    <p class="text-slate-600 text-sm mb-4">In non-strict mode, assigning to a variable without declaring it with `var`, `let`, or `const` accidentally creates a global variable, polluting the global scope.</p>
+                     <pre class="fira-code bg-slate-800 text-white p-4 rounded-lg text-sm mb-4">function createGlobal() {
+  // Oops, no declaration keyword!
+  myGlobal = "I'm everywhere!";
+}
+createGlobal();
+console.log(myGlobal); // Works, but it's a bug</pre>
+                    <div class="solution-container">
+                        <button class="toggle-solution-btn bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold py-2 px-3 rounded">Show Solution</button>
+                        <div class="solution-content hidden mt-4 p-4 bg-green-50 border-l-4 border-green-400 rounded-r-lg">
+                            <h4 class="font-semibold text-green-800">Solutions</h4>
+                            <p class="text-sm text-green-700 mb-2">1. Always use `let` or `const` to declare variables.</p>
+                            <pre class="fira-code bg-slate-700 p-2 rounded text-xs">let myGlobal = ...;</pre>
+                            <p class="text-sm text-green-700 mb-2 mt-2">2. Use 'strict mode' at the top of your files or functions. This will turn these mistakes into errors.</p>
+                             <pre class="fira-code bg-slate-700 p-2 rounded text-xs">'use strict';</pre>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-slate-800 text-slate-400 mt-16">
+        <div class="container mx-auto p-8 text-center">
+            <p>An interactive guide to core JavaScript execution concepts.</p>
+            <p class="text-sm mt-2">&copy; 2025. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            
+            // Hoisting Simulator
+            const hoistTabs = document.querySelectorAll('.hoist-tab');
+            const codeBeforeEl = document.getElementById('hoist-code-before');
+            const codeAfterEl = document.getElementById('hoist-code-after');
+            const explanationEl = document.getElementById('hoist-explanation');
+
+            const hoistingData = {
+                'hoist-var': {
+                    before: `console.log(myVar);\nvar myVar = "Hello World!";`,
+                    after: `var myVar;\nconsole.log(myVar);\nmyVar = "Hello World!";`,
+                    explanation: '`var` declarations are hoisted to the top of their function scope and initialized with `undefined`. Only the declaration is moved, not the assignment.'
+                },
+                'hoist-let': {
+                    before: `// console.log(myLet);\nlet myLet = "Hello World!";`,
+                    after: `let myLet; // Enters TDZ\n// console.log(myLet); // ReferenceError\nmyLet = "Hello World!";`,
+                    explanation: '`let` declarations are hoisted to the top of their block scope but are NOT initialized. Accessing them before declaration results in a `ReferenceError` due to the Temporal Dead Zone (TDZ).'
+                },
+                'hoist-const': {
+                    before: `// console.log(myConst);\nconst myConst = "Hello!";`,
+                    after: `const myConst; // Enters TDZ\n// console.log(myConst); // ReferenceError\nmyConst = "Hello!";`,
+                    explanation: '`const` behaves like `let`: hoisted but uninitialized and in the TDZ. It must be initialized at the time of declaration.'
+                },
+                'hoist-func': {
+                    before: `sayHello();\n\nfunction sayHello() {\n  console.log("Hello!");\n}`,
+                    after: `function sayHello() {\n  console.log("Hello!");\n}\n\nsayHello();`,
+                    explanation: 'Function declarations are fully hoisted, including their name and body. This allows you to call them before they appear in the code.'
+                },
+                'hoist-class': {
+                    before: `// const myCar = new Car();\nclass Car {}\nconst myCar = new Car();`,
+                    after: `class Car {}; // Enters TDZ\n// const myCar = new Car(); // ReferenceError\nconst myCar = new Car();`,
+                    explanation: '`class` declarations are hoisted but, like `let` and `const`, they are not initialized and are subject to the TDZ. You cannot use a class before it is declared.'
+                }
+            };
+
+            function updateHoistingContent(targetId) {
+                const data = hoistingData[targetId];
+                codeBeforeEl.textContent = data.before;
+                codeAfterEl.textContent = data.after;
+                explanationEl.textContent = data.explanation;
+            }
+
+            hoistTabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    hoistTabs.forEach(t => {
+                        t.classList.remove('active-tab', 'text-blue-600', 'border-blue-500');
+                        t.classList.add('text-slate-500', 'hover:text-slate-700', 'hover:border-slate-300', 'border-transparent');
+                    });
+                    tab.classList.add('active-tab', 'text-blue-600', 'border-blue-500');
+                    tab.classList.remove('text-slate-500', 'hover:text-slate-700', 'hover:border-slate-300', 'border-transparent');
+                    updateHoistingContent(tab.dataset.target);
+                });
+            });
+
+            updateHoistingContent('hoist-var');
+
+            // TDZ Simulator
+            const tdzRunBtn = document.getElementById('tdz-run-btn');
+            const tdzLineEl = document.getElementById('tdz-line');
+            const tdzStatusEl = document.getElementById('tdz-status');
+            const tdzCodeDisplayEl = document.getElementById('tdz-code-display');
+
+            const tdzCodeLines = [
+                '{',
+                '  // TDZ for myVar starts here',
+                '  // console.log(myVar);',
+                '  let myVar = "Safe!"; // TDZ ends',
+                '  console.log(myVar);',
+                '}'
+            ];
+            tdzCodeDisplayEl.textContent = tdzCodeLines.join('\n');
+            let tdzStep = 0;
+            const linePositions = [1.5, 3.0, 4.5, 6.0, 7.5, 9.0];
+
+            function runTdzStep() {
+                if (tdzStep >= linePositions.length) {
+                    tdzStep = 0; // Reset
+                }
+
+                tdzLineEl.style.top = `${linePositions[tdzStep]}rem`;
+
+                switch (tdzStep) {
+                    case 0:
+                        tdzStatusEl.textContent = 'Entering block scope...';
+                        tdzLineEl.style.backgroundColor = 'rgba(239, 68, 68, 0.0)'; // transparent
+                        break;
+                    case 1:
+                        tdzStatusEl.textContent = 'myVar is in the TDZ. It is hoisted but uninitialized.';
+                        tdzLineEl.style.backgroundColor = 'rgba(239, 68, 68, 0.4)'; // red
+                        break;
+                    case 2:
+                        tdzStatusEl.textContent = 'ACCESS ERROR! Trying to access myVar in TDZ would throw a ReferenceError.';
+                        tdzLineEl.style.backgroundColor = 'rgba(239, 68, 68, 0.7)'; // darker red
+                        break;
+                    case 3:
+                        tdzStatusEl.textContent = 'myVar is declared and initialized. TDZ ends for myVar.';
+                        tdzLineEl.style.backgroundColor = 'rgba(34, 197, 94, 0.4)'; // green
+                        break;
+                    case 4:
+                        tdzStatusEl.textContent = 'Access successful. console.log outputs "Safe!"';
+                        break;
+                    case 5:
+                        tdzStatusEl.textContent = 'Exiting block scope. Simulation complete. Click to run again.';
+                        break;
+                }
+                tdzStep++;
+            }
+            tdzRunBtn.addEventListener('click', runTdzStep);
+
+
+            // Scope Chain Visualizer
+            const scopeVarBtns = document.querySelectorAll('.scope-var-btn');
+            const scopeLogEl = document.getElementById('scope-log');
+            const scopeBoxes = {
+                inner: document.getElementById('scope-inner'),
+                outer: document.getElementById('scope-outer'),
+                global: document.getElementById('scope-global')
+            };
+
+            function logToScope(message) {
+                const p = document.createElement('p');
+                p.textContent = `> ${message}`;
+                scopeLogEl.appendChild(p);
+                scopeLogEl.scrollTop = scopeLogEl.scrollHeight;
+            }
+
+            function highlightBox(box, delay) {
+                return new Promise(resolve => {
+                    setTimeout(() => {
+                        Object.values(scopeBoxes).forEach(b => b.classList.remove('highlight-search'));
+                        if (box) box.classList.add('highlight-search');
+                        resolve();
+                    }, delay);
+                });
+            }
+            
+            async function findVariable(varName) {
+                scopeLogEl.innerHTML = '';
+                logToScope(`Searching for "${varName}"...`);
+                await highlightBox(scopeBoxes.inner, 500);
+                logToScope('1. Checking innerFunc Scope...');
+                if (varName === 'innerVar') {
+                    await highlightBox(scopeBoxes.inner, 800);
+                    logToScope(`✅ Found in innerFunc Scope! Value: "🚀"`);
+                    return;
+                }
+                logToScope(`...not found.`);
+                
+                await highlightBox(scopeBoxes.outer, 800);
+                logToScope('2. Checking outerFunc Scope...');
+                if (varName === 'outerVar') {
+                    await highlightBox(scopeBoxes.outer, 800);
+                    logToScope(`✅ Found in outerFunc Scope! Value: "🪐"`);
+                    return;
+                }
+                logToScope(`...not found.`);
+
+                await highlightBox(scopeBoxes.global, 800);
+                logToScope('3. Checking Global Scope...');
+                if (varName === 'globalVar') {
+                    await highlightBox(scopeBoxes.global, 800);
+                    logToScope(`✅ Found in Global Scope! Value: "🌍"`);
+                    return;
+                }
+                logToScope(`...not found.`);
+
+                await highlightBox(null, 800);
+                logToScope('❌ Reached end of scope chain. ReferenceError!');
+            }
+
+            scopeVarBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    findVariable(btn.dataset.var);
+                });
+            });
+
+            // Chart.js Scope Chart
+            const ctx = document.getElementById('scopeChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['var', 'let', 'const'],
+                    datasets: [{
+                        label: 'Scope Type',
+                        data: [1, 2, 2], // 1: Function, 2: Block
+                        backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                        borderColor: 'rgba(59, 130, 246, 1)',
+                        borderWidth: 1
+                    }, {
+                        label: 'Has TDZ',
+                        data: [0, 1, 1], // 0: No, 1: Yes
+                        backgroundColor: 'rgba(239, 68, 68, 0.5)',
+                        borderColor: 'rgba(239, 68, 68, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value, index, values) {
+                                    if (this.getLabelForValue(value) == 2) return 'Block';
+                                    if (this.getLabelForValue(value) == 1) return 'Function/Yes';
+                                    if (this.getLabelForValue(value) == 0) return 'No';
+                                    return '';
+                                },
+                                stepSize: 1
+                            },
+                             title: {
+                                display: true,
+                                text: 'Feature'
+                            }
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Comparison of Declaration Keywords',
+                            font: { size: 18 }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    const value = context.parsed.y;
+                                    if (context.dataset.label === 'Scope Type') {
+                                        label += value === 1 ? 'Function Scope' : 'Block Scope';
+                                    } else if (context.dataset.label === 'Has TDZ') {
+                                        label += value === 1 ? 'Yes' : 'No';
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Pitfalls solution toggle
+            document.querySelectorAll('.toggle-solution-btn').forEach(button => {
+                button.addEventListener('click', () => {
+                    const solutionContent = button.nextElementSibling;
+                    const isHidden = solutionContent.classList.contains('hidden');
+                    solutionContent.classList.toggle('hidden');
+                    button.textContent = isHidden ? 'Hide Solution' : 'Show Solution';
+                });
+            });
+
+            // Active nav link scrolling
+            const sections = document.querySelectorAll('section');
+            const navLinks = document.querySelectorAll('.nav-link');
+            
+            window.addEventListener('scroll', () => {
+                let current = '';
+                sections.forEach(section => {
+                    const sectionTop = section.offsetTop;
+                    if (pageYOffset >= sectionTop - 100) {
+                        current = section.getAttribute('id');
+                    }
+                });
+                
+                navLinks.forEach(link => {
+                    link.classList.remove('active');
+                    if(link.getAttribute('href') === `#${current}`) {
+                        link.classList.add('active');
+                    }
+                });
+            });
+            
+            // Mobile navigation
+            document.getElementById('mobile-nav').addEventListener('change', function(e) {
+                window.location.hash = e.target.value;
+            });
+
+        });
+    </script>
+</body>
+</html>

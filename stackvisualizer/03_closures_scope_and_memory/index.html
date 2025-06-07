@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Guide to JavaScript Closures</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Slate & Amber -->
+    <!-- Application Structure Plan: A single-page app with a fixed sidebar navigation for thematic sections. This structure promotes non-linear exploration, allowing users to jump between core concepts, an interactive code sandbox, a memory leak lab, and a best practices checklist. This is superior to a linear report as it facilitates active learning and experimentation, making abstract concepts like scope and memory management tangible and easier to grasp. -->
+    <!-- Visualization & Content Choices:
+        - Scope Chain: Report info on lexical scope is visualized with interactive, nested HTML divs instead of a static diagram to actively demonstrate the lookup process (Goal: Inform/Visualize, Method: HTML/JS).
+        - Use Cases (Module, Currying, setTimeout): These are presented in a tabbed "Interactive Sandbox". Users can run code and see live results, directly linking theory to practice (Goal: Engage/Experiment, Method: HTML/JS).
+        - setTimeout `var` vs `let`: A bar chart (Chart.js) is used to clearly compare the final output values of the loop, providing an immediate visual contrast that text alone cannot achieve (Goal: Compare, Method: Chart.js/Canvas).
+        - Memory Leaks: Abstract concepts are made concrete in the "Memory Leak Lab" with simulated "memory meters" (HTML/CSS progress bars) that react to user actions, visualizing the impact of code patterns (Goal: Visualize/Warn, Method: HTML/JS).
+        - Best Practices: Presented as a clean, scannable checklist for easy review and retention (Goal: Summarize, Method: HTML).
+        This design transforms the report into a hands-on learning tool. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .nav-link { transition: all 0.2s ease-in-out; }
+        .nav-link.active { background-color: #f59e0b; color: white; }
+        .nav-link:not(.active):hover { background-color: #fde68a; color: #44403c; }
+        .code-block { background-color: #1f2937; color: #f3f4f6; font-family: 'Courier New', Courier, monospace; white-space: pre-wrap; word-wrap: break-word;}
+        .tab-button { transition: all 0.2s ease-in-out; }
+        .tab-button.active { border-color: #f59e0b; color: #f59e0b; }
+        .scope-box { border: 2px solid; padding: 1rem; margin: 0.5rem; border-radius: 0.5rem; transition: all 0.3s ease; }
+        .highlight-scope { box-shadow: 0 0 15px 5px rgba(245, 158, 11, 0.7); transform: scale(1.02); }
+        .memory-meter-bar { transition: width 0.5s ease-in-out; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+    <div class="flex flex-col md:flex-row min-h-screen">
+        <aside class="w-full md:w-64 bg-stone-100 p-4 md:p-6 border-r border-stone-200 md:fixed md:h-full">
+            <h1 class="text-2xl font-bold text-slate-900 mb-2">JS Closures</h1>
+            <p class="text-sm text-stone-600 mb-8">An Interactive Deep Dive</p>
+            <nav id="navigation" class="space-y-2">
+                <a href="#welcome" class="nav-link block font-medium text-stone-700 px-4 py-2 rounded-lg">Welcome</a>
+                <a href="#core-concept" class="nav-link block font-medium text-stone-700 px-4 py-2 rounded-lg">The Core Concept</a>
+                <a href="#sandbox" class="nav-link block font-medium text-stone-700 px-4 py-2 rounded-lg">Interactive Sandbox</a>
+                <a href="#memory-lab" class="nav-link block font-medium text-stone-700 px-4 py-2 rounded-lg">Memory Leak Lab</a>
+                <a href="#best-practices" class="nav-link block font-medium text-stone-700 px-4 py-2 rounded-lg">Best Practices</a>
+            </nav>
+        </aside>
+
+        <main class="flex-1 md:ml-64 p-4 sm:p-6 md:p-10">
+            <div id="content">
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const content = document.getElementById('content');
+            const navigationLinks = document.querySelectorAll('#navigation .nav-link');
+
+            const pageContent = {
+                'welcome': `
+                    <section id="welcome" class="space-y-6 animate-fade-in">
+                        <h2 class="text-4xl font-bold text-slate-900">Welcome to the Interactive Guide to JavaScript Closures</h2>
+                        <p class="text-lg text-slate-600">This application transforms the dense topic of JavaScript closures into an interactive learning experience. Forget static text—here, you'll engage with code, visualize complex concepts, and see the real-world impact of closures on application performance. The goal is to build a deep, intuitive understanding of what closures are, how to use them effectively, and how to avoid common pitfalls like memory leaks.</p>
+                        <div class="grid md:grid-cols-2 gap-6 pt-4">
+                            <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+                                <h3 class="text-xl font-semibold mb-3 text-amber-600">Explore & Learn</h3>
+                                <p class="text-slate-600">Navigate through the sections using the sidebar. Each module builds upon the last, from fundamental definitions to advanced memory management techniques.</p>
+                            </div>
+                            <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+                                <h3 class="text-xl font-semibold mb-3 text-amber-600">Interact & Experiment</h3>
+                                <p class="text-slate-600">The "Interactive Sandbox" and "Memory Leak Lab" are designed for hands-on learning. Run code, trigger simulations, and observe the outcomes to solidify your knowledge.</p>
+                            </div>
+                        </div>
+                    </section>
+                `,
+                'core-concept': `
+                    <section id="core-concept" class="space-y-6">
+                        <h2 class="text-4xl font-bold text-slate-900">The Core Concept: A Function's Memory</h2>
+                        <p class="text-lg text-slate-600">A closure is a function bundled with its lexical environment. In simple terms, an inner function "remembers" the variables and parameters of its outer function, even after the outer function has finished running. This is possible because of lexical scoping, where scope is determined by the code's structure, not when it's executed. Let's visualize this with an interactive scope chain.</p>
+                        
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+                            <h3 class="font-semibold text-xl mb-4">Visualizing the Scope Chain</h3>
+                            <div class="flex flex-col md:flex-row gap-6">
+                                <div class="md:w-1/2">
+                                    <div class="code-block p-4 rounded-lg text-sm">
+                                        <p><span class="text-cyan-400">function</span> <span class="text-yellow-300">outerFunction</span>() {</p>
+                                        <p>  <span class="text-purple-400">const</span> outerVar = <span class="text-orange-400">'I am from the outside!'</span>;</p><br>
+                                        <p>  <span class="text-cyan-400">function</span> <span class="text-yellow-300">innerFunction</span>() {</p>
+                                        <p>    console.log(outerVar); <span class="text-gray-500">// Accesses outer scope</span></p>
+                                        <p>  }</p><br>
+                                        <p>  <span class="text-pink-400">return</span> innerFunction;</p>
+                                        <p>}</p><br>
+                                        <p><span class="text-purple-400">const</span> myClosure = <span class="text-yellow-300">outerFunction</span>();</p>
+                                        <p><span class="text-yellow-300">myClosure</span>();</p>
+                                    </div>
+                                    <button id="runScopeChain" class="mt-4 bg-amber-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-amber-600 transition-colors">Execute & Visualize</button>
+                                </div>
+                                <div class="md:w-1/2">
+                                    <div id="scope-global" class="scope-box border-slate-400">
+                                        <p class="font-bold text-slate-600">Global Scope</p>
+                                        <p class="text-sm">Contains: <span class="font-mono text-purple-600">myClosure</span></p>
+                                        <div id="scope-outer" class="scope-box border-amber-500">
+                                            <p class="font-bold text-amber-600">outerFunction Scope</p>
+                                            <p class="text-sm">Contains: <span class="font-mono text-purple-600">outerVar</span>, <span class="font-mono text-purple-600">innerFunction</span></p>
+                                            <div id="scope-inner" class="scope-box border-teal-500">
+                                                <p class="font-bold text-teal-600">innerFunction Scope</p>
+                                                <p class="text-sm">Contains: <span class="font-mono text-purple-600">(nothing local)</span></p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <p id="scope-explanation" class="mt-4 text-slate-600 text-sm h-16"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                `,
+                'sandbox': `
+                    <section id="sandbox" class="space-y-6">
+                        <h2 class="text-4xl font-bold text-slate-900">Interactive Sandbox</h2>
+                        <p class="text-lg text-slate-600">Closures are not just theoretical; they are the backbone of many powerful JavaScript patterns. Use this sandbox to experiment with common use cases and see closures in action. Select a pattern below to get started.</p>
+                        
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+                            <div id="sandbox-tabs" class="flex border-b border-stone-200 mb-4">
+                                <button class="tab-button active py-2 px-4 font-semibold text-stone-500 border-b-2 border-transparent" data-target="module-pattern">Module Pattern</button>
+                                <button class="tab-button py-2 px-4 font-semibold text-stone-500 border-b-2 border-transparent" data-target="function-factory">Function Factory</button>
+                                <button class="tab-button py-2 px-4 font-semibold text-stone-500 border-b-2 border-transparent" data-target="async-state">Async State (<code>setTimeout</code>)</button>
+                            </div>
+                            <div id="sandbox-content"></div>
+                        </div>
+                    </section>
+                `,
+                 'memory-lab': `
+                    <section id="memory-lab" class="space-y-6">
+                        <h2 class="text-4xl font-bold text-slate-900">Memory Leak Lab</h2>
+                        <p class="text-lg text-slate-600">The power of closures comes with a cost: potential memory leaks. Because a closure holds a reference to its outer scope, that scope cannot be garbage collected. If the closure is unintentionally kept alive, it can lead to memory being retained unnecessarily. This lab simulates common leak scenarios.</p>
+                        
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+                           <div id="lab-tabs" class="flex border-b border-stone-200 mb-4">
+                                <button class="tab-button active py-2 px-4 font-semibold text-stone-500 border-b-2 border-transparent" data-target="dangling-listener">Dangling Event Listeners</button>
+                                <button class="tab-button py-2 px-4 font-semibold text-stone-500 border-b-2 border-transparent" data-target="large-object">Large Object Retention</button>
+                            </div>
+                            <div id="lab-content"></div>
+                        </div>
+                    </section>
+                `,
+                'best-practices': `
+                    <section id="best-practices" class="space-y-6">
+                        <h2 class="text-4xl font-bold text-slate-900">Best Practices Checklist</h2>
+                        <p class="text-lg text-slate-600">Writing memory-efficient closures is about diligence and awareness. Follow these best practices to harness the power of closures without compromising application performance.</p>
+                        
+                        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200 hover:shadow-lg transition-shadow">
+                                <h3 class="font-semibold text-xl mb-3 text-amber-600">Minimize Captured Scope</h3>
+                                <p class="text-slate-600">If you only need one property from a large object, extract it into a variable and close over that variable instead of the entire object. This allows the large object to be garbage collected.</p>
+                            </div>
+                            <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200 hover:shadow-lg transition-shadow">
+                                <h3 class="font-semibold text-xl mb-3 text-amber-600">Remove Event Listeners</h3>
+                                <p class="text-slate-600">Always use <code class="code-block text-xs px-1 py-0.5 rounded">removeEventListener</code> to clean up listeners when a component unmounts or the listener is no longer needed. This prevents "dangling" listeners from leaking memory.</p>
+                            </div>
+                            <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200 hover:shadow-lg transition-shadow">
+                                <h3 class="font-semibold text-xl mb-3 text-amber-600">Clear Timers</h3>
+                                <p class="text-slate-600">Active <code class="code-block text-xs px-1 py-0.5 rounded">setTimeout</code> or <code class="code-block text-xs px-1 py-0.5 rounded">setInterval</code> timers keep their callback closures alive. Always call <code class="code-block text-xs px-1 py-0.5 rounded">clearTimeout</code> or <code class="code-block text-xs px-1 py-0.5 rounded">clearInterval</code>.</p>
+                            </div>
+                            <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200 hover:shadow-lg transition-shadow">
+                                <h3 class="font-semibold text-xl mb-3 text-amber-600">Nullify References</h3>
+                                <p class="text-slate-600">If a long-lived closure no longer needs a large object it has captured, set its internal reference to that object to <code class="code-block text-xs px-1 py-0.5 rounded">null</code>. Also, nullify variables holding closures when they're no longer needed.</p>
+                            </div>
+                            <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200 hover:shadow-lg transition-shadow">
+                                <h3 class="font-semibold text-xl mb-3 text-amber-600">Use Modern Scoping</h3>
+                                <p class="text-slate-600">Prefer <code class="code-block text-xs px-1 py-0.5 rounded">let</code> and <code class="code-block text-xs px-1 py-0.5 rounded">const</code> over <code class="code-block text-xs px-1 py-0.5 rounded">var</code>. Their block-scoping rules often create more granular and predictable closure environments, reducing the risk of accidental captures.</p>
+                            </div>
+                            <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200 hover:shadow-lg transition-shadow">
+                                <h3 class="font-semibold text-xl mb-3 text-amber-600">Leverage Dev Tools</h3>
+                                <p class="text-slate-600">Regularly use your browser's Memory tab to take and compare heap snapshots. This is the most effective way to identify and diagnose memory leaks in a real application.</p>
+                            </div>
+                        </div>
+                    </section>
+                `,
+            };
+
+            const sandboxContent = {
+                'module-pattern': `
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div>
+                            <h4 class="font-semibold text-lg mb-2">Data Encapsulation</h4>
+                            <p class="text-sm text-slate-600 mb-4">The Module Pattern uses an IIFE (Immediately Invoked Function Expression) and closures to create private state. The <code class="code-block text-xs px-1 rounded">privateCounter</code> variable is only accessible to the inner functions returned on the public API.</p>
+                            <div class="code-block p-4 rounded-lg text-sm">
+                                const counter = (function() {<br>
+                                &nbsp;&nbsp;let privateCounter = 0;<br>
+                                &nbsp;&nbsp;function changeBy(val) { ... }<br><br>
+                                &nbsp;&nbsp;return {<br>
+                                &nbsp;&nbsp;&nbsp;&nbsp;increment: () => { changeBy(1); },<br>
+                                &nbsp;&nbsp;&nbsp;&nbsp;decrement: () => { changeBy(-1); },<br>
+                                &nbsp;&nbsp;&nbsp;&nbsp;value: () => { return privateCounter; }<br>
+                                &nbsp;&nbsp;};<br>
+                                })();
+                            </div>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-lg mb-2">Try It Out</h4>
+                            <div class="flex items-center gap-4">
+                                <button id="increment-btn" class="bg-teal-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-teal-600">Increment</button>
+                                <button id="decrement-btn" class="bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600">Decrement</button>
+                            </div>
+                            <p class="mt-4">Current Value: <span id="counter-value" class="font-bold text-2xl text-amber-600">0</span></p>
+                            <p class="mt-4 text-xs text-slate-500">Attempting to access <code class="code-block text-xs px-1 rounded">counter.privateCounter</code> directly from the console would result in <code class="code-block text-xs px-1 rounded">undefined</code>.</p>
+                        </div>
+                    </div>
+                `,
+                'function-factory': `
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div>
+                            <h4 class="font-semibold text-lg mb-2">Function Factories & Currying</h4>
+                            <p class="text-sm text-slate-600 mb-4">A function factory is a function that creates and returns other functions. The returned functions "remember" the arguments passed to the factory via closure. This is the basis for currying.</p>
+                             <div class="code-block p-4 rounded-lg text-sm">
+                                function makeAdder(x) {<br>
+                                &nbsp;&nbsp;return function(y) {<br>
+                                &nbsp;&nbsp;&nbsp;&nbsp;return x + y;<br>
+                                &nbsp;&nbsp;};<br>
+                                }<br><br>
+                                const add5 = makeAdder(5);<br>
+                                console.log(add5(2)); // 7
+                            </div>
+                        </div>
+                        <div>
+                             <h4 class="font-semibold text-lg mb-2">Create Your Own Adder</h4>
+                             <div class="space-y-4">
+                                <div>
+                                    <label for="factory-x" class="block font-medium text-sm">Factory Value (x)</label>
+                                    <input type="number" id="factory-x" value="5" class="w-full p-2 border border-stone-300 rounded-lg">
+                                </div>
+                                <div>
+                                    <label for="factory-y" class="block font-medium text-sm">Execution Value (y)</label>
+                                    <input type="number" id="factory-y" value="2" class="w-full p-2 border border-stone-300 rounded-lg">
+                                </div>
+                                <button id="run-factory" class="bg-amber-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-amber-600">Calculate</button>
+                                <p class="mt-4">Result: <span id="factory-result" class="font-bold text-2xl text-amber-600">7</span></p>
+                             </div>
+                        </div>
+                    </div>
+                `,
+                'async-state': `
+                     <div class="grid md:grid-cols-2 gap-6">
+                        <div>
+                            <h4 class="font-semibold text-lg mb-2">Closures in Asynchronous Code</h4>
+                            <p class="text-sm text-slate-600 mb-4">A classic problem: using <code class="code-block text-xs px-1 rounded">setTimeout</code> in a loop with <code class="code-block text-xs px-1 rounded">var</code>. Because <code class="code-block text-xs px-1 rounded">var</code> is function-scoped, all callbacks close over the *same* variable, which has already reached its final value by the time they run. Block-scoped <code class="code-block text-xs px-1 rounded">let</code> solves this by creating a new binding for each iteration.</p>
+                            <button id="run-async-demo" class="bg-amber-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-amber-600">Run Both Demos</button>
+                             <div class="mt-4 p-4 bg-slate-100 rounded-lg">
+                                <h5 class="font-semibold">Demo Output:</h5>
+                                <div id="async-output" class="text-sm font-mono whitespace-pre h-32 overflow-y-auto"></div>
+                            </div>
+                        </div>
+                        <div>
+                             <h4 class="font-semibold text-lg mb-2">Comparative Results</h4>
+                             <p class="text-sm text-slate-600 mb-4">The chart visualizes the final logged values from each loop. Notice how <code class="code-block text-xs px-1 rounded">var</code> produces an incorrect, uniform result, while <code class="code-block text-xs px-1 rounded">let</code> behaves as expected.</p>
+                             <div class="chart-container relative h-64 md:h-80 w-full max-w-lg mx-auto"><canvas id="async-chart"></canvas></div>
+                        </div>
+                    </div>
+                `
+            };
+
+            const labContent = {
+                'dangling-listener': `
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div>
+                            <h4 class="font-semibold text-lg mb-2">The Dangling Listener Problem</h4>
+                            <p class="text-sm text-slate-600 mb-4">When a DOM element is removed but its event listener is not, the listener (a closure) can be "dangled" in memory. It prevents the garbage collector from cleaning up its scope. This is common in Single-Page Apps.</p>
+                            <div id="dangling-container" class="p-4 bg-slate-100 rounded-lg min-h-[100px]"></div>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-lg mb-2">Simulated Memory Usage</h4>
+                            <div class="flex items-center gap-4 mb-4">
+                                <button id="addListenerBtn" class="bg-teal-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-teal-600">Add Element & Listener</button>
+                            </div>
+                            <div class="flex items-center gap-4 mb-4">
+                                <button id="removeListenerBadBtn" class="bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600">Remove (Incorrectly)</button>
+                                <button id="removeListenerGoodBtn" class="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600">Remove (Correctly)</button>
+                            </div>
+                            <p class="text-sm font-medium">Memory Meter:</p>
+                            <div class="w-full bg-slate-200 rounded-full h-4 mt-1">
+                                <div id="memory-meter-1" class="bg-red-500 h-4 rounded-full memory-meter-bar" style="width: 0%"></div>
+                            </div>
+                            <p id="lab-explanation-1" class="mt-2 text-sm text-slate-600 h-10"></p>
+                        </div>
+                    </div>
+                `,
+                'large-object': `
+                     <div class="grid md:grid-cols-2 gap-6">
+                        <div>
+                            <h4 class="font-semibold text-lg mb-2">Unintended Object Retention</h4>
+                            <p class="text-sm text-slate-600 mb-4">If a closure captures a large object, that object will be kept in memory for the lifetime of the closure. If the closure only needs one small piece of data from the object, this is incredibly inefficient and can cause significant memory bloat.</p>
+                            <div class="code-block p-4 rounded-lg text-sm">
+                                function createLeakyClosure() {<br>
+                                &nbsp;&nbsp;const largeObject = new Array(1e6).fill('data');<br>
+                                &nbsp;&nbsp;return function() {<br>
+                                &nbsp;&nbsp;&nbsp;&nbsp;console.log(largeObject[0]);<br>
+                                &nbsp;&nbsp;};<br>
+                                }<br><br>
+                                let myLeakyClosure = createLeakyClosure();
+                            </div>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-lg mb-2">Simulated Memory Usage</h4>
+                             <div class="flex items-center gap-4 mb-4">
+                                <button id="createLeakyBtn" class="bg-teal-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-teal-600">Create Leaky Closure</button>
+                                <button id="releaseLeakyBtn" class="bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600">Release It (Set to null)</button>
+                            </div>
+                            <p class="text-sm font-medium">Memory Meter:</p>
+                            <div class="w-full bg-slate-200 rounded-full h-4 mt-1">
+                                <div id="memory-meter-2" class="bg-red-500 h-4 rounded-full memory-meter-bar" style="width: 0%"></div>
+                            </div>
+                            <p id="lab-explanation-2" class="mt-2 text-sm text-slate-600 h-10"></p>
+                        </div>
+                    </div>
+                `
+            }
+
+            function updateActiveLink(hash) {
+                navigationLinks.forEach(link => {
+                    if (link.getAttribute('href') === hash) {
+                        link.classList.add('active');
+                    } else {
+                        link.classList.remove('active');
+                    }
+                });
+            }
+
+            function renderContent(hash) {
+                const pageId = hash.substring(1);
+                content.innerHTML = pageContent[pageId] || pageContent['welcome'];
+                updateActiveLink(hash);
+                window.scrollTo(0, 0);
+
+                if (pageId === 'core-concept') {
+                    setupCoreConcept();
+                } else if (pageId === 'sandbox') {
+                    setupSandbox();
+                } else if (pageId === 'memory-lab'){
+                    setupMemoryLab();
+                }
+            }
+
+            function setupCoreConcept() {
+                const btn = document.getElementById('runScopeChain');
+                const explanation = document.getElementById('scope-explanation');
+                const scopes = {
+                    inner: document.getElementById('scope-inner'),
+                    outer: document.getElementById('scope-outer'),
+                    global: document.getElementById('scope-global'),
+                };
+                
+                function resetHighlights() {
+                    Object.values(scopes).forEach(s => s.classList.remove('highlight-scope'));
+                }
+
+                btn.addEventListener('click', () => {
+                    resetHighlights();
+                    explanation.textContent = 'Executing myClosure()... it needs outerVar.';
+                    setTimeout(() => {
+                        scopes.inner.classList.add('highlight-scope');
+                        explanation.textContent = 'Lookup starts in innerFunction\'s scope. outerVar not found.';
+                    }, 500);
+                     setTimeout(() => {
+                        scopes.inner.classList.remove('highlight-scope');
+                        scopes.outer.classList.add('highlight-scope');
+                        explanation.textContent = 'Lookup moves to the outer scope... Found outerVar! The closure "remembers" it.';
+                    }, 2000);
+                     setTimeout(() => {
+                        resetHighlights();
+                        explanation.textContent = 'Execution complete! The closure successfully accessed its lexical environment.';
+                    }, 3500);
+                });
+            }
+            
+            function setupSandbox() {
+                const tabContainer = document.getElementById('sandbox-tabs');
+                const contentContainer = document.getElementById('sandbox-content');
+
+                function renderSandboxContent(targetId) {
+                    contentContainer.innerHTML = sandboxContent[targetId];
+                    if (targetId === 'module-pattern') setupModulePattern();
+                    if (targetId === 'function-factory') setupFunctionFactory();
+                    if (targetId === 'async-state') setupAsyncState();
+                }
+
+                tabContainer.addEventListener('click', (e) => {
+                    if (e.target.matches('.tab-button')) {
+                        tabContainer.querySelector('.active').classList.remove('active');
+                        e.target.classList.add('active');
+                        renderSandboxContent(e.target.dataset.target);
+                    }
+                });
+                renderSandboxContent('module-pattern');
+            }
+
+            function setupModulePattern() {
+                const counter = (function () {
+                    let privateCounter = 0;
+                    function changeBy(val) { privateCounter += val; }
+                    return {
+                        increment: () => { changeBy(1); },
+                        decrement: () => { changeBy(-1); },
+                        value: () => privateCounter,
+                    };
+                })();
+
+                const valueEl = document.getElementById('counter-value');
+                document.getElementById('increment-btn').addEventListener('click', () => {
+                    counter.increment();
+                    valueEl.textContent = counter.value();
+                });
+                document.getElementById('decrement-btn').addEventListener('click', () => {
+                    counter.decrement();
+                    valueEl.textContent = counter.value();
+                });
+            }
+
+            function setupFunctionFactory() {
+                const xInput = document.getElementById('factory-x');
+                const yInput = document.getElementById('factory-y');
+                const resultEl = document.getElementById('factory-result');
+
+                document.getElementById('run-factory').addEventListener('click', () => {
+                    const x = parseInt(xInput.value, 10);
+                    const y = parseInt(yInput.value, 10);
+                    
+                    function makeAdder(x_val) {
+                        return function(y_val) { return x_val + y_val; };
+                    }
+
+                    const adder = makeAdder(x);
+                    resultEl.textContent = adder(y);
+                });
+            }
+            
+            let asyncChartInstance = null;
+            function setupAsyncState() {
+                const runBtn = document.getElementById('run-async-demo');
+                const outputEl = document.getElementById('async-output');
+                const chartCanvas = document.getElementById('async-chart').getContext('2d');
+
+                function renderChart(varData, letData) {
+                    if(asyncChartInstance) {
+                        asyncChartInstance.destroy();
+                    }
+                    asyncChartInstance = new Chart(chartCanvas, {
+                        type: 'bar',
+                        data: {
+                            labels: ['Loop 1', 'Loop 2', 'Loop 3'],
+                            datasets: [{
+                                label: '`var` result',
+                                data: varData,
+                                backgroundColor: 'rgba(239, 68, 68, 0.7)',
+                                borderColor: 'rgba(239, 68, 68, 1)',
+                                borderWidth: 1
+                            }, {
+                                label: '`let` result',
+                                data: letData,
+                                backgroundColor: 'rgba(34, 197, 94, 0.7)',
+                                borderColor: 'rgba(34, 197, 94, 1)',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: { beginAtZero: true, max: 5 }
+                            },
+                            plugins: {
+                                title: { display: true, text: 'Final Logged Values: var vs. let' }
+                            }
+                        }
+                    });
+                }
+                
+                renderChart([0,0,0],[0,0,0]);
+
+                runBtn.addEventListener('click', () => {
+                    outputEl.innerHTML = '';
+                    runBtn.disabled = true;
+
+                    let varResults = [];
+                    let letResults = [];
+                    let varDoneCount = 0;
+                    let letDoneCount = 0;
+
+                    outputEl.innerHTML += 'Starting `var` loop...\n';
+                    for (var i = 1; i <= 3; i++) {
+                        setTimeout(function() {
+                            outputEl.innerHTML += `> var loop (i=${i}) logs: ${i}\n`;
+                            varResults.push(i);
+                            varDoneCount++;
+                            if (varDoneCount === 3) checkCompletion();
+                        }, i * 500);
+                    }
+
+                    outputEl.innerHTML += 'Starting `let` loop...\n';
+                    for (let j = 1; j <= 3; j++) {
+                        setTimeout(function() {
+                            outputEl.innerHTML += `> let loop (j=${j}) logs: ${j}\n`;
+                            letResults.push(j);
+                            letDoneCount++;
+                            if (letDoneCount === 3) checkCompletion();
+                        }, (j * 500) + 100);
+                    }
+                    
+                    function checkCompletion() {
+                         if(varDoneCount === 3 && letDoneCount === 3) {
+                             outputEl.innerHTML += '\nAll demos complete.\n';
+                             runBtn.disabled = false;
+                             renderChart(varResults, letResults.sort());
+                         }
+                    }
+                });
+            }
+
+            function setupMemoryLab() {
+                const tabContainer = document.getElementById('lab-tabs');
+                const contentContainer = document.getElementById('lab-content');
+
+                function renderLabContent(targetId) {
+                    contentContainer.innerHTML = labContent[targetId];
+                    if (targetId === 'dangling-listener') setupDanglingListener();
+                    if (targetId === 'large-object') setupLargeObject();
+                }
+
+                tabContainer.addEventListener('click', (e) => {
+                    if (e.target.matches('.tab-button')) {
+                        tabContainer.querySelector('.active').classList.remove('active');
+                        e.target.classList.add('active');
+                        renderLabContent(e.target.dataset.target);
+                    }
+                });
+                renderLabContent('dangling-listener');
+            }
+
+            let largeLeakyObject = null; // simulate global reference
+            function setupDanglingListener() {
+                const addBtn = document.getElementById('addListenerBtn');
+                const badRemoveBtn = document.getElementById('removeListenerBadBtn');
+                const goodRemoveBtn = document.getElementById('removeListenerGoodBtn');
+                const container = document.getElementById('dangling-container');
+                const meter = document.getElementById('memory-meter-1');
+                const explanation = document.getElementById('lab-explanation-1');
+
+                let memory = 0;
+                let listenerFunc = null;
+
+                addBtn.addEventListener('click', () => {
+                    if(container.innerHTML !== '') return;
+                    memory = 50;
+                    meter.style.width = memory + '%';
+                    explanation.textContent = 'Element created and listener attached. Memory is now in use.';
+
+                    const element = document.createElement('button');
+                    element.textContent = 'I have a listener!';
+                    element.className = 'bg-blue-500 text-white p-2 rounded';
+                    container.appendChild(element);
+
+                    largeLeakyObject = new Array(1e5).fill('some data');
+
+                    listenerFunc = () => { console.log(largeLeakyObject[0]); };
+                    element.addEventListener('click', listenerFunc);
+                });
+                
+                badRemoveBtn.addEventListener('click', () => {
+                    if(container.innerHTML === '') return;
+                    container.innerHTML = '';
+                    explanation.textContent = 'Element removed, but listener was not. Memory is leaked!';
+                });
+                
+                goodRemoveBtn.addEventListener('click', () => {
+                    if(container.innerHTML === '' || !listenerFunc) return;
+                    const element = container.querySelector('button');
+                    element.removeEventListener('click', listenerFunc);
+                    container.innerHTML = '';
+                    listenerFunc = null;
+                    largeLeakyObject = null; // simulate release
+                    memory = 0;
+                    meter.style.width = memory + '%';
+                    explanation.textContent = 'Listener removed, then element removed. Memory is freed!';
+                });
+            }
+
+            let myLeakyClosure = null;
+            function setupLargeObject() {
+                const createBtn = document.getElementById('createLeakyBtn');
+                const releaseBtn = document.getElementById('releaseLeakyBtn');
+                const meter = document.getElementById('memory-meter-2');
+                const explanation = document.getElementById('lab-explanation-2');
+
+                createBtn.addEventListener('click', () => {
+                    if (myLeakyClosure) return;
+                    const largeObject = new Array(1e6).fill('leaky data');
+                    myLeakyClosure = function() { console.log(largeObject[0]); };
+                    meter.style.width = '75%';
+                    explanation.textContent = 'Closure created, capturing a large object in memory.';
+                });
+
+                releaseBtn.addEventListener('click', () => {
+                    if (!myLeakyClosure) return;
+                    myLeakyClosure = null;
+                    meter.style.width = '0%';
+                    explanation.textContent = 'Closure reference set to null. Garbage collector can now reclaim the memory.';
+                });
+            }
+
+            window.addEventListener('hashchange', () => renderContent(window.location.hash));
+            renderContent(window.location.hash || '#welcome');
+            
+            document.getElementById('navigation').addEventListener('click', function(e) {
+                if(e.target.tagName === 'A') {
+                    const hash = e.target.getAttribute('href');
+                    history.pushState(null, '', hash);
+                    renderContent(hash);
+                    e.preventDefault();
+                }
+            });
+
+             window.addEventListener('popstate', function() {
+                renderContent(window.location.hash || '#welcome');
+            });
+        });
+    </script>
+</body>
+</html>

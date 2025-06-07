@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Guide to JavaScript Execution Contexts</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Slate & Sky -->
+    <!-- Application Structure Plan: A tab-based single-page application (SPA) is chosen for optimal user experience. The complex, dense report is broken down into six logical, thematic sections accessible via a sticky top navigation bar: Introduction, Context Types, Core Components, Scope & Chain, Call Stack, and Closures. This structure prevents overwhelming the user with a long scroll and allows them to focus on one concept at a time. The flow is designed for progressive learning, starting from high-level concepts and moving to more complex topics. Interactive visualizations within each tab are key to turning abstract ideas into concrete, explorable examples, which is more effective for technical learning than static text. -->
+    <!-- Visualization & Content Choices: 
+        - Introduction: Uses an HTML/CSS diagram to visually introduce the core relationship between code and the JS Engine. Goal: Inform.
+        - Context Types: Uses a bar chart (Chart.js) to compare GEC, FEC, and Eval contexts, leveraging the data from the report's table. Goal: Compare. Interaction: Tabs to switch between details.
+        - Core Components: Employs an interactive `this` binding simulator and diagrams for VE/LE. Goal: Inform, Organize. Interaction: User selects a binding rule to see the code's output, making a complex topic tangible.
+        - Scope & Chain: An interactive HTML/CSS diagram where hovering over variables visually traces the lookup process up the scope chain. Goal: Show Relationships. Interaction: Hovering to trigger highlighting.
+        - Call Stack: A step-by-step animation of the call stack for the factorial recursion example. Goal: Show Change/Process. Interaction: 'Next Step' button drives the animation, giving the user control.
+        - Closures: A visual demonstration of function factories, showing how closures encapsulate their lexical environment. Goal: Inform, Show Relationships. Interaction: Buttons to create and call closures to see state preservation.
+        - All visualizations are built with HTML/CSS/JS or Chart.js (Canvas), adhering to the NO SVG/Mermaid constraint. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .tab-button { transition: all 0.3s ease; }
+        .tab-button.active { color: #0284c7; border-bottom-color: #0284c7; }
+        .tab-button:not(.active) { border-bottom-color: transparent; }
+        .content-section { display: none; }
+        .content-section.active { display: block; }
+        .code-block { background-color: #1e293b; color: #e2e8f0; font-family: 'Courier New', Courier, monospace; }
+        .highlight { background-color: #fef08a; color: #1e293b; }
+        .chart-container { position: relative; width: 100%; max-width: 700px; margin-left: auto; margin-right: auto; height: 350px; max-height: 400px; }
+        @media (min-width: 768px) { .chart-container { height: 400px; } }
+        .scope { border: 2px solid #94a3b8; transition: all 0.3s ease; }
+        .scope-highlight { border-color: #0ea5e9; box-shadow: 0 0 15px rgba(14, 165, 233, 0.5); }
+        .call-stack-viz { min-height: 300px; }
+        .stack-frame { transition: all 0.5s ease-in-out; }
+    </style>
+</head>
+<body class="text-slate-700">
+
+    <div class="container mx-auto px-4 py-8">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-slate-800">The JavaScript Execution Model</h1>
+            <p class="mt-2 text-lg text-slate-600">An interactive guide to Execution Contexts, Scopes, the Call Stack, and Closures.</p>
+        </header>
+
+        <nav class="sticky top-0 bg-white/80 backdrop-blur-sm z-10 border-b border-slate-200 mb-8">
+            <div class="flex justify-center flex-wrap">
+                <button class="tab-button text-sm md:text-base font-medium py-4 px-3 md:px-6 border-b-2 active" onclick="showTab('intro')">Introduction</button>
+                <button class="tab-button text-sm md:text-base font-medium py-4 px-3 md:px-6 border-b-2" onclick="showTab('types')">Context Types</button>
+                <button class="tab-button text-sm md:text-base font-medium py-4 px-3 md:px-6 border-b-2" onclick="showTab('components')">Core Components</button>
+                <button class="tab-button text-sm md:text-base font-medium py-4 px-3 md:px-6 border-b-2" onclick="showTab('scope')">Scope & Chain</button>
+                <button class="tab-button text-sm md:text-base font-medium py-4 px-3 md:px-6 border-b-2" onclick="showTab('stack')">Call Stack</button>
+                <button class="tab-button text-sm md:text-base font-medium py-4 px-3 md:px-6 border-b-2" onclick="showTab('closures')">Closures</button>
+            </div>
+        </nav>
+
+        <main id="main-content">
+            <!-- Introduction Section -->
+            <section id="intro" class="content-section active">
+                <div class="bg-white p-6 md:p-8 rounded-xl shadow-sm">
+                    <h2 class="text-3xl font-bold text-sky-600 mb-4">What is an Execution Context?</h2>
+                    <p class="mb-4 text-lg leading-relaxed">In JavaScript, an Execution Context (EC) is the abstract environment where your code is evaluated and executed. Think of it as a container holding all the necessary information for a piece of code to run, including its variables, functions, and the value of the <code>this</code> keyword. As a single-threaded language, JavaScript can only handle one EC at a time, processing them sequentially.</p>
+                    <p class="mb-6 text-lg leading-relaxed">Every EC is created in two phases: the **Creation Phase**, where memory is set up for variables and functions (leading to hoisting), and the **Execution Phase**, where the code is run line-by-line. This section introduces this foundational concept.</p>
+                     <div class="bg-slate-100 p-6 rounded-lg mt-6 text-center">
+                        <h3 class="text-xl font-semibold text-slate-700 mb-4">From Code to Execution</h3>
+                        <div class="flex flex-col md:flex-row items-center justify-around space-y-4 md:space-y-0 md:space-x-4">
+                            <div class="text-center">
+                                <div class="bg-white p-4 rounded-lg shadow-md w-48 h-24 flex items-center justify-center">
+                                    <span class="text-lg font-mono">Your Code.js</span>
+                                </div>
+                                <p class="mt-2 text-slate-600 font-medium">Source Code</p>
+                            </div>
+                            <div class="text-5xl text-slate-400 font-thin">&rarr;</div>
+                            <div class="text-center">
+                                <div class="bg-white p-4 rounded-lg shadow-md w-48 h-24 flex items-center justify-center">
+                                    <span class="text-lg font-semibold">JS Engine (V8)</span>
+                                </div>
+                                 <p class="mt-2 text-slate-600 font-medium">Interpreter</p>
+                            </div>
+                            <div class="text-5xl text-slate-400 font-thin">&rarr;</div>
+                             <div class="text-center">
+                                <div class="bg-white p-4 rounded-lg shadow-md w-48 h-24 flex items-center justify-center">
+                                    <span class="text-lg font-semibold">Execution Context</span>
+                                </div>
+                                 <p class="mt-2 text-slate-600 font-medium">Execution Environment</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Types Section -->
+            <section id="types" class="content-section">
+                <div class="bg-white p-6 md:p-8 rounded-xl shadow-sm">
+                    <h2 class="text-3xl font-bold text-sky-600 mb-4">Types of Execution Contexts</h2>
+                    <p class="mb-6 text-lg leading-relaxed">JavaScript defines three main types of execution contexts. The Global context is the base for all other contexts. A new Function context is created for every function call, encapsulating its private scope. The Eval context is a special case, created when code is run via the <code>eval()</code> function, a practice generally discouraged today. This chart compares their creation triggers and uniqueness.</p>
+                    <div class="chart-container">
+                        <canvas id="typesChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Components Section -->
+            <section id="components" class="content-section">
+                 <div class="bg-white p-6 md:p-8 rounded-xl shadow-sm">
+                    <h2 class="text-3xl font-bold text-sky-600 mb-4">Core Components of an Execution Context</h2>
+                     <p class="mb-8 text-lg leading-relaxed">Every execution context logically contains three core components that define its environment: the Lexical Environment (which tracks identifiers like variables), the Variable Environment (a subset for <code>var</code> and function declarations), and the <code>this</code> binding (a dynamic reference to an object). The interactive tool below demonstrates how the <code>this</code> binding changes based on how a function is called.</p>
+                    
+                    <div class="border border-slate-200 rounded-lg">
+                        <div class="p-6">
+                            <h3 class="text-2xl font-semibold mb-4 text-slate-800">The `this` Binding Simulator</h3>
+                            <p class="mb-4">Select a binding rule to see how it determines the value of <code>this</code> in the example code.</p>
+                            <div id="this-binding-selector" class="flex flex-wrap gap-2 mb-4">
+                                <!-- Buttons will be injected by JS -->
+                            </div>
+                            <div class="grid md:grid-cols-2 gap-6">
+                                <div class="code-block p-4 rounded-md text-sm">
+                                    <pre id="this-code-display"></pre>
+                                </div>
+                                <div class="bg-slate-100 p-4 rounded-md">
+                                    <h4 class="font-semibold text-slate-600 mb-2">Explanation:</h4>
+                                    <p id="this-explanation" class="text-sm mb-4"></p>
+                                    <h4 class="font-semibold text-slate-600 mb-2">Result of <code>console.log(this.name)</code>:</h4>
+                                    <div id="this-output" class="code-block p-2 rounded-md font-bold text-center text-lg"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                 </div>
+            </section>
+
+            <!-- Scope Section -->
+            <section id="scope" class="content-section">
+                <div class="bg-white p-6 md:p-8 rounded-xl shadow-sm">
+                    <h2 class="text-3xl font-bold text-sky-600 mb-4">Lexical Scoping and the Scope Chain</h2>
+                    <p class="mb-6 text-lg leading-relaxed">Lexical (or static) scope means a variable's accessibility is determined by its physical location in the code. When JavaScript needs a variable, it looks in the current scope. If it's not there, it travels up the **scope chain**—a link to the outer scope—until it finds the variable or reaches the global scope. Hover over the variable names in the <code>innerFunction</code> below to see this lookup process visualized.</p>
+                    <div class="flex flex-col md:flex-row gap-6">
+                        <div class="md:w-1/2">
+                            <div id="scope-global" class="scope p-4 rounded-lg bg-slate-50">
+                                <h4 class="font-bold text-slate-500 text-sm">Global Scope</h4>
+                                <pre class="code-block p-2 mt-2 rounded-md text-sm"><code>let globalVar = "I am global";</code></pre>
+                                <div id="scope-outer" class="scope mt-4 p-4 rounded-lg bg-white">
+                                    <h4 class="font-bold text-slate-500 text-sm">outerFunction Scope</h4>
+                                    <pre class="code-block p-2 mt-2 rounded-md text-sm"><code>let outerVar = "I am from outerFunction";</code></pre>
+                                    <div id="scope-inner" class="scope mt-4 p-4 rounded-lg bg-slate-50">
+                                        <h4 class="font-bold text-slate-500 text-sm">innerFunction Scope</h4>
+                                        <pre class="code-block p-2 mt-2 rounded-md text-sm"><code>let innerVar = "I am from innerFunction";
+
+console.log(<span class="var-lookup" data-target="scope-global">globalVar</span>);
+console.log(<span class="var-lookup" data-target="scope-outer">outerVar</span>);
+console.log(<span class="var-lookup" data-target="scope-inner">innerVar</span>);</code></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="md:w-1/2 bg-slate-100 p-6 rounded-lg flex items-center justify-center">
+                           <p id="scope-explanation" class="text-center text-slate-600 font-medium text-lg">Hover over a variable in the innermost function to trace its scope.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Call Stack Section -->
+            <section id="stack" class="content-section">
+                <div class="bg-white p-6 md:p-8 rounded-xl shadow-sm">
+                    <h2 class="text-3xl font-bold text-sky-600 mb-4">The Call Stack in Action</h2>
+                    <p class="mb-6 text-lg leading-relaxed">The Call Stack is a LIFO (Last-In, First-Out) data structure that JavaScript uses to keep track of function calls. When a function is called, its Execution Context is pushed onto the stack. When it returns, it's popped off. This is what makes recursion possible, but it's also why infinite recursion causes a "stack overflow". Click through the steps below to see how the call stack manages a recursive call to <code>factorial(3)</code>.</p>
+                    <div class="grid md:grid-cols-2 gap-8 items-start">
+                        <div>
+                            <h3 class="text-xl font-semibold mb-2">Code: <code>factorial(3)</code></h3>
+                            <div class="code-block p-4 rounded-md text-sm">
+                                <pre><code id="stack-code-display">function factorial(n) {
+  if (n === 0) {
+    return 1;
+  } else {
+    return n * factorial(n - 1);
+  }
+}
+
+factorial(3);</code></pre>
+                            </div>
+                             <div class="mt-4 flex gap-2">
+                                <button id="stack-next-btn" class="bg-sky-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-sky-700 transition">Next Step</button>
+                                <button id="stack-reset-btn" class="bg-slate-200 text-slate-700 font-bold py-2 px-4 rounded-lg hover:bg-slate-300 transition">Reset</button>
+                            </div>
+                        </div>
+                        <div class="bg-slate-100 p-4 rounded-lg">
+                            <h3 class="text-xl font-semibold mb-4 text-center">Call Stack</h3>
+                            <div id="call-stack-container" class="call-stack-viz relative bg-white border-2 border-slate-300 rounded-lg flex flex-col-reverse justify-start p-2">
+                                <div id="stack-base" class="stack-frame text-center p-3 bg-slate-200 text-slate-600 font-semibold rounded-md">Global Context</div>
+                            </div>
+                             <p id="stack-explanation" class="mt-4 text-center text-slate-600 font-medium h-12"></p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Closures Section -->
+            <section id="closures" class="content-section">
+                <div class="bg-white p-6 md:p-8 rounded-xl shadow-sm">
+                    <h2 class="text-3xl font-bold text-sky-600 mb-4">Closures: Functions That Remember</h2>
+                    <p class="mb-6 text-lg leading-relaxed">A closure is the combination of a function and the lexical environment within which that function was declared. This allows an inner function to access its outer function's scope even after the outer function has returned. In essence, the function "remembers" its birth environment. This is used for creating function factories and private variables. Use the buttons below to create and call functions that demonstrate this powerful concept.</p>
+                     <div class="grid md:grid-cols-2 gap-8">
+                        <div>
+                             <h3 class="text-xl font-semibold mb-2">Code: Function Factory</h3>
+                            <div class="code-block p-4 rounded-md text-sm">
+<pre><code>function makeAdder(x) {
+  // x is in the Lexical Environment
+  return function(y) {
+    // This inner function is a closure
+    // It "closes over" x
+    return x + y;
+  };
+}</code></pre>
+                            </div>
+                             <div class="mt-4 flex flex-wrap gap-2">
+                                <button onclick="createClosure('add5', 5)" class="bg-sky-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-sky-700 transition">const add5 = makeAdder(5);</button>
+                                <button onclick="createClosure('add10', 10)" class="bg-sky-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-sky-700 transition">const add10 = makeAdder(10);</button>
+                                <button onclick="resetClosures()" class="bg-slate-200 text-slate-700 font-bold py-2 px-4 rounded-lg hover:bg-slate-300 transition">Reset</button>
+                            </div>
+                        </div>
+                        <div id="closures-display" class="bg-slate-100 p-4 rounded-lg space-y-4">
+                            <p class="text-center text-slate-500">Create closures to see them here.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        const tabs = document.querySelectorAll('.tab-button');
+        const sections = document.querySelectorAll('.content-section');
+
+        function showTab(tabId) {
+            tabs.forEach(tab => {
+                tab.classList.remove('active');
+                if (tab.getAttribute('onclick').includes(`'${tabId}'`)) {
+                    tab.classList.add('active');
+                }
+            });
+            sections.forEach(section => {
+                section.classList.remove('active');
+                if (section.id === tabId) {
+                    section.classList.add('active');
+                }
+            });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function initTypesChart() {
+            const ctx = document.getElementById('typesChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Global (GEC)', 'Function (FEC)', 'Eval'],
+                    datasets: [{
+                        label: 'Creation Trigger',
+                        data: [1, 2, 3], 
+                        backgroundColor: '#38bdf8',
+                        borderColor: '#0284c7',
+                        borderWidth: 1
+                    }, {
+                        label: 'Uniqueness',
+                        data: [1, 3, 3],
+                        backgroundColor: '#a5b4fc',
+                        borderColor: '#6366f1',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value, index, values) {
+                                    const labels = ['N/A', 'Script Start / Single', 'Function Call / Per Call', 'Eval Call / Per Call'];
+                                    return labels[value];
+                                },
+                                font: {
+                                    size: 10
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Comparison of Execution Context Types',
+                            font: { size: 16, weight: 'bold' }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    const value = context.raw;
+                                    const labels = ['N/A', 'Script Start / Single', 'Function Call / Per Call', 'Eval Call / Per Call'];
+                                    label += labels[value];
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        const thisBindingData = {
+            default: {
+                code: `// Non-strict mode
+var name = "Global Window";
+
+function showName() {
+  console.log(this.name);
+}
+
+showName();`,
+                explanation: "In a standalone function call (non-strict mode), `this` defaults to the global object (e.g., `window` in browsers).",
+                output: '"Global Window"'
+            },
+            implicit: {
+                code: `const myObject = {
+  name: "MyObject",
+  greet: function() {
+    console.log(this.name);
+  }
+};
+
+myObject.greet();`,
+                explanation: "When a function is called as a method of an object, `this` is implicitly bound to that object.",
+                output: '"MyObject"'
+            },
+            explicit: {
+                code: `function introduce() {
+  console.log(this.name);
+}
+
+const person = { name: "Alice" };
+
+introduce.call(person);`,
+                explanation: "Using `.call()` (or `.apply()`, `.bind()`), we can explicitly set the value of `this` for a function call.",
+                output: '"Alice"'
+            },
+            new: {
+                code: `function User(name) {
+  this.name = name;
+  // 'this' is the new object
+}
+
+const user1 = new User("Charlie");
+console.log(user1.name);`,
+                explanation: "When using the `new` keyword, a new object is created and `this` is bound to that new instance.",
+                output: '"Charlie"'
+            },
+            arrow: {
+                code: `const manager = {
+  name: "Alpha Team",
+  display: function() {
+    const arrowFunc = () => {
+      console.log(this.name);
+    };
+    arrowFunc();
+  }
+};
+manager.display();`,
+                explanation: "Arrow functions don't have their own `this`. They inherit it from their surrounding (lexical) scope. Here, it inherits from `display`.",
+                output: '"Alpha Team"'
+            }
+        };
+
+        function initThisBindingSimulator() {
+            const selector = document.getElementById('this-binding-selector');
+            const codeDisplay = document.getElementById('this-code-display');
+            const explanation = document.getElementById('this-explanation');
+            const output = document.getElementById('this-output');
+            
+            Object.keys(thisBindingData).forEach((key, index) => {
+                const button = document.createElement('button');
+                button.textContent = key.charAt(0).toUpperCase() + key.slice(1) + ' Binding';
+                button.className = 'this-btn border-2 border-slate-300 py-1 px-3 rounded-full text-sm font-medium hover:bg-sky-100 hover:border-sky-400 transition';
+                if (index === 0) {
+                    button.classList.add('active', 'bg-sky-100', 'border-sky-400');
+                }
+                button.onclick = () => {
+                    document.querySelectorAll('.this-btn').forEach(b => b.classList.remove('active', 'bg-sky-100', 'border-sky-400'));
+                    button.classList.add('active', 'bg-sky-100', 'border-sky-400');
+                    updateThisDisplay(key);
+                };
+                selector.appendChild(button);
+            });
+
+            updateThisDisplay('default');
+        }
+        
+        function updateThisDisplay(key) {
+            const data = thisBindingData[key];
+            document.getElementById('this-code-display').textContent = data.code;
+            document.getElementById('this-explanation').textContent = data.explanation;
+            document.getElementById('this-output').textContent = data.output;
+        }
+
+        function initScopeChain() {
+            const lookups = document.querySelectorAll('.var-lookup');
+            const explanation = document.getElementById('scope-explanation');
+            const originalText = explanation.textContent;
+
+            lookups.forEach(span => {
+                span.addEventListener('mouseenter', () => {
+                    const targetId = span.dataset.target;
+                    document.querySelectorAll('.scope').forEach(s => s.classList.remove('scope-highlight'));
+                    document.getElementById(targetId).classList.add('scope-highlight');
+                    
+                    let scopeName;
+                    if(targetId === 'scope-inner') scopeName = "its own (inner) scope";
+                    if(targetId === 'scope-outer') scopeName = "the outer function's scope";
+                    if(targetId === 'scope-global') scopeName = "the global scope";
+                    
+                    explanation.innerHTML = `The variable <code>${span.textContent}</code> is found in <span class="font-bold text-sky-600">${scopeName}</span>.`;
+                });
+
+                span.addEventListener('mouseleave', () => {
+                    document.querySelectorAll('.scope').forEach(s => s.classList.remove('scope-highlight'));
+                    explanation.textContent = originalText;
+                });
+            });
+        }
+        
+        function initCallStack() {
+            const codeLines = [
+                { line: 8, explanation: "Execution starts. `factorial(3)` is called." },
+                { line: 1, explanation: "`factorial(3)` runs. `n` is 3. It's not 0." },
+                { line: 5, explanation: "It calls `factorial(n-1)`, which is `factorial(2)`." },
+                { line: 1, explanation: "`factorial(2)` runs. `n` is 2. It's not 0." },
+                { line: 5, explanation: "It calls `factorial(n-1)`, which is `factorial(1)`." },
+                { line: 1, explanation: "`factorial(1)` runs. `n` is 1. It's not 0." },
+                { line: 5, explanation: "It calls `factorial(n-1)`, which is `factorial(0)`." },
+                { line: 1, explanation: "`factorial(0)` runs. `n` is 0. Base case met." },
+                { line: 2, explanation: "`factorial(0)` returns 1." },
+                { line: 5, explanation: "`factorial(1)` gets 1 back. Returns `1 * 1 = 1`." },
+                { line: 5, explanation: "`factorial(2)` gets 1 back. Returns `2 * 1 = 2`." },
+                { line: 5, explanation: "`factorial(3)` gets 2 back. Returns `3 * 2 = 6`." },
+                { line: 8, explanation: "Final result is 6. Global context is all that's left." },
+                { line: -1, explanation: "Simulation finished. Click Reset to start over." }
+            ];
+            
+            const stackActions = [
+                () => pushStack('factorial(3)'),
+                null,
+                () => pushStack('factorial(2)'),
+                null,
+                () => pushStack('factorial(1)'),
+                null,
+                () => pushStack('factorial(0)'),
+                null,
+                () => popStack('returns 1'),
+                () => popStack('returns 1'),
+                () => popStack('returns 2'),
+                () => popStack('returns 6'),
+                null,
+                null
+            ];
+            
+            let currentStep = 0;
+            const nextBtn = document.getElementById('stack-next-btn');
+            const resetBtn = document.getElementById('stack-reset-btn');
+            const codeDisplay = document.getElementById('stack-code-display');
+            const explanationEl = document.getElementById('stack-explanation');
+            const originalCode = codeDisplay.innerHTML;
+
+            function updateDisplay() {
+                const step = codeLines[currentStep];
+                
+                let newCode = originalCode.split('\n');
+                if (step.line > 0) {
+                     newCode[step.line - 1] = `<span class="highlight">${newCode[step.line - 1]}</span>`;
+                }
+                codeDisplay.innerHTML = newCode.join('\n');
+                explanationEl.textContent = step.explanation;
+
+                if (stackActions[currentStep]) {
+                    stackActions[currentStep]();
+                }
+
+                nextBtn.disabled = currentStep >= codeLines.length - 1;
+            }
+
+            function reset() {
+                currentStep = 0;
+                codeDisplay.innerHTML = originalCode;
+                document.getElementById('call-stack-container').innerHTML = `<div id="stack-base" class="stack-frame text-center p-3 bg-slate-200 text-slate-600 font-semibold rounded-md">Global Context</div>`;
+                updateDisplay();
+            }
+
+            nextBtn.addEventListener('click', () => {
+                if (currentStep < codeLines.length - 1) {
+                    currentStep++;
+                    updateDisplay();
+                }
+            });
+            resetBtn.addEventListener('click', reset);
+            reset();
+        }
+        
+        function pushStack(text) {
+            const container = document.getElementById('call-stack-container');
+            const frame = document.createElement('div');
+            frame.textContent = text;
+            frame.className = 'stack-frame text-center p-3 bg-sky-200 border border-sky-400 text-sky-800 font-semibold rounded-md mb-2';
+            frame.style.opacity = '0';
+            frame.style.transform = 'translateY(-20px)';
+            container.appendChild(frame);
+            setTimeout(() => {
+                frame.style.opacity = '1';
+                frame.style.transform = 'translateY(0)';
+            }, 50);
+        }
+
+        function popStack(returnValueText) {
+            const container = document.getElementById('call-stack-container');
+            const topFrame = container.lastChild;
+            if (topFrame && topFrame.id !== 'stack-base') {
+                topFrame.style.opacity = '0';
+                topFrame.style.transform = 'translateY(20px)';
+                topFrame.textContent += ` (returns ${returnValueText})`;
+                 setTimeout(() => topFrame.remove(), 500);
+            }
+        }
+        
+        function initClosures() {
+            resetClosures();
+        }
+
+        let createdClosures = {};
+
+        function createClosure(name, value) {
+            if (createdClosures[name]) return;
+            
+            createdClosures[name] = { value: value };
+            
+            const display = document.getElementById('closures-display');
+            if (Object.keys(createdClosures).length === 1) {
+                 display.innerHTML = '';
+            }
+            
+            const closureEl = document.createElement('div');
+            closureEl.id = `closure-${name}`;
+            closureEl.className = 'bg-white p-4 rounded-lg shadow-md border-l-4 border-sky-500';
+            closureEl.innerHTML = `
+                <h4 class="font-bold text-slate-700">Closure: <code>${name}</code></h4>
+                <div class="text-sm mt-2">
+                    <p>This function "remembers" its lexical environment where <strong>x = ${value}</strong>.</p>
+                    <div class="flex items-center gap-2 mt-2">
+                        <span>${name}(</span>
+                        <input type="number" id="input-${name}" class="w-16 p-1 border border-slate-300 rounded-md" placeholder="y">
+                        <span>);</span>
+                        <button onclick="callClosure('${name}')" class="bg-indigo-500 text-white text-xs font-bold py-1 px-2 rounded hover:bg-indigo-600">Call</button>
+                    </div>
+                    <p id="result-${name}" class="mt-2 font-mono h-6"></p>
+                </div>`;
+            display.appendChild(closureEl);
+        }
+
+        function callClosure(name) {
+            const y = document.getElementById(`input-${name}`).value;
+            const resultEl = document.getElementById(`result-${name}`);
+            if (y === '' || isNaN(y)) {
+                resultEl.textContent = 'Please enter a number for y.';
+                resultEl.classList.add('text-red-500');
+                return;
+            }
+            const x = createdClosures[name].value;
+            const result = x + parseInt(y, 10);
+            resultEl.textContent = `// Result: ${result}`;
+            resultEl.classList.remove('text-red-500');
+        }
+
+        function resetClosures() {
+            createdClosures = {};
+            document.getElementById('closures-display').innerHTML = '<p class="text-center text-slate-500">Create closures to see them here.</p>';
+        }
+
+        window.onload = () => {
+            initTypesChart();
+            initThisBindingSimulator();
+            initScopeChain();
+            initCallStack();
+            initClosures();
+        };
+    </script>
+</body>
+</html>

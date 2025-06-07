@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive JavaScript Event Loop Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chosen Palette: Warm Neutrals with Sky and Amber accents -->
+    <!-- Application Structure Plan: The application is designed as an interactive dashboard simulator. This structure was chosen because the event loop is a dynamic process that is best understood by observing its state changes over time. A static report cannot adequately convey this flow. The simulator provides a hands-on, step-by-step visualization, allowing users to actively engage with the material and build a mental model of the components (Call Stack, Queues, APIs) and their interactions. This is far more effective for learning than a linear text-based presentation. -->
+    <!-- Visualization & Content Choices: 
+        - Report Info: Core concepts (Call Stack, Web APIs, Macrotask/Microtask Queues, Event Loop Algorithm). Goal: Visually demonstrate the interaction and flow between these components. Viz/Presentation: A multi-panel dashboard where each component is a distinct visual area. HTML divs are used as blocks to represent tasks and stack frames. Interaction: User selects a code scenario and uses "Next Step" or "Animate" buttons to see blocks move between panels, simulating the event loop's logic. Justification: This direct visualization makes the abstract concepts tangible and easy to follow. Library/Method: Vanilla JS for simulation logic and DOM manipulation; Tailwind CSS for layout and styling.
+        - Report Info: Macrotask vs. Microtask priority. Goal: Clearly show that all microtasks run before the next macrotask. Viz/Presentation: Color-coded task blocks (e.g., sky for macrotasks, amber for microtasks) and a dedicated panel for each queue. Interaction: The simulation will always empty the entire Microtask Queue before moving a single item from the Macrotask Queue. An explanation panel describes this rule at the relevant step. Justification: Visual separation and color-coding provide immediate clarity on task types and priority. Library/Method: Vanilla JS, Tailwind CSS.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .panel {
+            @apply bg-white border border-slate-200 rounded-lg shadow-sm p-4 flex flex-col;
+            min-height: 150px;
+        }
+        .panel-title {
+            @apply text-sm font-bold text-slate-600 border-b border-slate-200 pb-2 mb-2;
+        }
+        .task-block {
+            @apply p-2 rounded-md shadow-sm mb-2 text-xs text-center break-all transition-all duration-300 ease-in-out;
+        }
+        .stack-block {
+            @apply bg-indigo-200 border border-indigo-300 text-indigo-800;
+        }
+        .api-block {
+            @apply bg-green-200 border border-green-300 text-green-800;
+        }
+        .micro-block {
+            @apply bg-amber-200 border border-amber-300 text-amber-800;
+        }
+        .macro-block {
+            @apply bg-sky-200 border border-sky-300 text-sky-800;
+        }
+        .console-output code {
+            @apply block bg-slate-800 text-white p-2 rounded-md text-sm whitespace-pre-wrap;
+        }
+        #code-display {
+            @apply bg-slate-900 text-white p-4 rounded-lg text-sm overflow-x-auto;
+            font-family: 'Courier New', Courier, monospace;
+        }
+    </style>
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-slate-900">JavaScript Event Loop Simulator</h1>
+            <p class="text-slate-600 mt-2 max-w-3xl mx-auto">An interactive tool to visualize how JavaScript's concurrency model works. Choose a scenario and step through the execution to see the Call Stack, Queues, and Web APIs in action.</p>
+        </header>
+
+        <main class="bg-slate-100 p-4 sm:p-6 rounded-xl border border-slate-200">
+            <!-- Controls -->
+            <div class="controls bg-white p-4 rounded-lg shadow-sm mb-6 flex flex-wrap items-center justify-between gap-4">
+                <div class="flex-grow">
+                    <label for="scenario-select" class="text-sm font-medium text-slate-700 mr-2">Select Scenario:</label>
+                    <select id="scenario-select" class="p-2 rounded-md border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    </select>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="reset-btn" class="px-4 py-2 bg-slate-500 hover:bg-slate-600 text-white font-semibold rounded-lg shadow-sm transition-colors">Reset</button>
+                    <button id="step-btn" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow-sm transition-colors">Next Step</button>
+                    <button id="animate-btn" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg shadow-sm transition-colors">Animate</button>
+                </div>
+            </div>
+
+            <!-- Visualization Area -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Left Side: Code & Console -->
+                <div class="flex flex-col gap-6">
+                    <div class="panel">
+                        <h2 class="panel-title">Code</h2>
+                        <pre id="code-display"><code>// Select a scenario to begin</code></pre>
+                    </div>
+                     <div class="panel">
+                        <h2 class="panel-title">Explanation</h2>
+                        <p id="explanation-text" class="text-sm text-slate-700 flex-grow">Welcome! Select a scenario from the dropdown menu and use the controls to start the simulation.</p>
+                    </div>
+                    <div class="panel">
+                        <h2 class="panel-title">Console Output</h2>
+                        <div id="console-output-container" class="console-output flex-grow">
+                            <code></code>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Side: Runtime Components -->
+                <div class="flex flex-col gap-6">
+                    <div class="panel">
+                        <h2 class="panel-title">Call Stack (LIFO)</h2>
+                        <div id="call-stack-container" class="flex flex-col-reverse justify-start flex-grow"></div>
+                    </div>
+                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="panel">
+                            <h2 class="panel-title">Web APIs</h2>
+                            <div id="web-apis-container" class="flex flex-col items-center flex-grow"></div>
+                        </div>
+                         <div class="panel">
+                            <h2 class="panel-title">Microtask Queue (FIFO - High Priority)</h2>
+                            <div id="microtask-queue-container" class="flex flex-row gap-2 flex-grow items-start"></div>
+                        </div>
+                    </div>
+                    <div class="panel">
+                        <h2 class="panel-title">Macrotask Queue (FIFO - Low Priority)</h2>
+                        <div id="macrotask-queue-container" class="flex flex-row gap-2 flex-grow items-start"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="text-center mt-8 text-sm text-slate-500">
+            <p>Designed to bring the concepts from the "Demystifying the JavaScript Event Loop" report to life.</p>
+        </footer>
+    </div>
+
+    <script>
+        const scenarios = {
+            sync: {
+                name: "Synchronous Execution",
+                code: `function first() {
+  console.log('first');
+  second();
+}
+function second() {
+  console.log('second');
+}
+first();
+console.log('end');`,
+                steps: [
+                    { explanation: "Initial state. The script is ready to run." },
+                    { callStack: ['global()'], explanation: "The script begins. A global execution context is pushed to the stack." },
+                    { callStack: ['global()', 'first()'], explanation: "`first()` is invoked and its frame is pushed onto the stack." },
+                    { callStack: ['global()', 'first()', `console.log('first')`], console: ["first"], explanation: "`console.log('first')` is called, logs to the console, and is immediately popped." },
+                    { callStack: ['global()', 'first()'], console: ["first"], explanation: "Execution continues inside `first()`." },
+                    { callStack: ['global()', 'first()', 'second()'], console: ["first"], explanation: "`second()` is invoked from within `first()` and its frame is pushed onto the stack." },
+                    { callStack: ['global()', 'first()', 'second()', `console.log('second')`], console: ["first", "second"], explanation: "`console.log('second')` is called, logs, and is popped." },
+                    { callStack: ['global()', 'first()'], console: ["first", "second"], explanation: "`second()` has finished, so its frame is popped from the stack. Control returns to `first()`." },
+                    { callStack: ['global()'], console: ["first", "second"], explanation: "`first()` has finished, its frame is popped. Control returns to the global script." },
+                    { callStack: ['global()', `console.log('end')`], console: ["first", "second", "end"], explanation: "`console.log('end')` is called, logs, and is popped." },
+                    { callStack: [], explanation: "The script has finished. The global context is popped. The event loop will now check the queues." }
+                ]
+            },
+            setTimeout: {
+                name: "setTimeout (Macrotask)",
+                code: `console.log('Start');
+
+setTimeout(() => {
+  console.log('Timeout callback');
+}, 1000);
+
+console.log('End');`,
+                steps: [
+                    { explanation: "Initial state. The script is ready to run." },
+                    { callStack: [`console.log('Start')`], console: ["Start"], explanation: "The script starts. `console.log('Start')` is executed and logged." },
+                    { callStack: [], console: ["Start"], explanation: "The `console.log` is popped from the stack." },
+                    { callStack: ['setTimeout()'], console: ["Start"], webApis: ['Timer (1s)'], explanation: "`setTimeout` is called. It's a Web API, so the browser starts a 1-second timer. The callback is handed to the Web API." },
+                    { callStack: [], console: ["Start"], webApis: ['Timer (1s)'], explanation: "`setTimeout` finishes its JS part and is popped. The timer continues in the background." },
+                    { callStack: [`console.log('End')`], console: ["Start", "End"], webApis: ['Timer (1s)'], explanation: "`console.log('End')` is executed and logged." },
+                    { callStack: [], console: ["Start", "End"], webApis: ['Timer (1s)'], explanation: "The script finishes. The Call Stack is empty. The event loop waits for tasks. The timer is still running in the Web APIs." },
+                    { callStack: [], console: ["Start", "End"], macrotaskQueue: ['Timeout callback'], explanation: "After 1 second, the timer completes. The Web API moves the callback to the Macrotask Queue." },
+                    { callStack: ['Timeout callback'], console: ["Start", "End"], explanation: "The event loop sees the Call Stack is empty and there's a task in the Macrotask Queue. It pushes the callback onto the stack." },
+                    { callStack: ['Timeout callback', `console.log('Timeout callback')`], console: ["Start", "End", "Timeout callback"], explanation: "The callback executes `console.log`, which logs to the console." },
+                    { callStack: [], console: ["Start", "End", "Timeout callback"], explanation: "The callback finishes and is popped. The application is now idle." }
+                ]
+            },
+            promise: {
+                name: "Promise (Microtask)",
+                code: `console.log('Start');
+
+Promise.resolve().then(() => {
+  console.log('Promise callback');
+});
+
+console.log('End');`,
+                steps: [
+                    { explanation: "Initial state. The script is ready to run." },
+                    { callStack: [`console.log('Start')`], console: ["Start"], explanation: "The script starts. `console.log('Start')` is executed and logged." },
+                    { callStack: [], console: ["Start"], explanation: "The `console.log` is popped from the stack." },
+                    { callStack: ['Promise.resolve().then()'], console: ["Start"], microtaskQueue: ['Promise callback'], explanation: "`Promise.resolve()` creates a resolved promise. `.then()` schedules its callback to run as a microtask." },
+                    { callStack: [], console: ["Start"], microtaskQueue: ['Promise callback'], explanation: "The promise setup is complete and popped from the stack. The microtask is waiting in its queue." },
+                    { callStack: [`console.log('End')`], console: ["Start", "End"], microtaskQueue: ['Promise callback'], explanation: "`console.log('End')` is executed and logged." },
+                    { callStack: [], console: ["Start", "End"], microtaskQueue: ['Promise callback'], explanation: "The main script finishes. The Call Stack is empty. The Event Loop now checks the queues." },
+                    { callStack: [], console: ["Start", "End"], microtaskQueue: ['Promise callback'], explanation: "The Event Loop checks the Microtask Queue *first*. It finds a task." },
+                    { callStack: ['Promise callback'], console: ["Start", "End"], explanation: "The microtask is moved from the queue to the Call Stack for execution." },
+                    { callStack: ['Promise callback', `console.log(...)`], console: ["Start", "End", "Promise callback"], explanation: "The microtask callback executes `console.log`, which logs to the console." },
+                    { callStack: [], console: ["Start", "End", "Promise callback"], explanation: "The callback finishes and is popped. The application is now idle." }
+                ]
+            },
+            combined: {
+                name: "Combined: Macro vs. Micro",
+                code: `console.log('Sync 1');
+
+setTimeout(() => {
+  console.log('Timeout (Macrotask)');
+}, 0);
+
+Promise.resolve().then(() => {
+  console.log('Promise (Microtask)');
+});
+
+console.log('Sync 2');`,
+                steps: [
+                    { explanation: "Initial state. This example shows the priority of microtasks over macrotasks." },
+                    { callStack: [`console.log('Sync 1')`], console: ["Sync 1"], explanation: "`console.log('Sync 1')` executes synchronously." },
+                    { callStack: [], console: ["Sync 1"], explanation: "The `console.log` is popped." },
+                    { callStack: ['setTimeout()'], console: ["Sync 1"], webApis: ['Timer (0ms)'], explanation: "`setTimeout` is called. Its callback is handed to the Web API to run after 0ms." },
+                    { callStack: [], console: ["Sync 1"], webApis: ['Timer (0ms)'], explanation: "`setTimeout` is popped. The timer is active in the Web APIs." },
+                    { callStack: ['Promise.resolve().then()'], console: ["Sync 1"], webApis: ['Timer (0ms)'], microtaskQueue: ['Promise callback'], explanation: "A resolved promise's `.then()` callback is scheduled immediately in the Microtask Queue." },
+                    { callStack: [], console: ["Sync 1"], webApis: ['Timer (0ms)'], microtaskQueue: ['Promise callback'], explanation: "The promise setup is popped." },
+                    { callStack: [`console.log('Sync 2')`], console: ["Sync 1", "Sync 2"], webApis: ['Timer (0ms)'], microtaskQueue: ['Promise callback'], explanation: "`console.log('Sync 2')` executes synchronously." },
+                    { callStack: [], console: ["Sync 1", "Sync 2"], macrotaskQueue: ['Timeout callback'], microtaskQueue: ['Promise callback'], explanation: "The main script finishes. The 0ms timer has also likely completed, moving its callback to the Macrotask Queue." },
+                    { callStack: [], console: ["Sync 1", "Sync 2"], macrotaskQueue: ['Timeout callback'], microtaskQueue: ['Promise callback'], explanation: "The Event Loop checks queues. It *must* process the Microtask Queue first because it has higher priority." },
+                    { callStack: ['Promise callback'], console: ["Sync 1", "Sync 2"], macrotaskQueue: ['Timeout callback'], explanation: "The promise callback (microtask) is moved to the Call Stack." },
+                    { callStack: ['Promise callback', `console.log(...)`], console: ["Sync 1", "Sync 2", "Promise (Microtask)"], macrotaskQueue: ['Timeout callback'], explanation: "The microtask executes and logs to the console." },
+                    { callStack: [], console: ["Sync 1", "Sync 2", "Promise (Microtask)"], macrotaskQueue: ['Timeout callback'], explanation: "The microtask is finished. The Event Loop checks the Microtask Queue again. It's empty." },
+                    { callStack: [], console: ["Sync 1", "Sync 2", "Promise (Microtask)"], macrotaskQueue: ['Timeout callback'], explanation: "Now, the Event Loop checks the Macrotask Queue. It finds the `setTimeout` callback." },
+                    { callStack: ['Timeout callback'], console: ["Sync 1", "Sync 2", "Promise (Microtask)"], explanation: "The `setTimeout` callback (macrotask) is moved to the Call Stack." },
+                    { callStack: ['Timeout callback', `console.log(...)`], console: ["Sync 1", "Sync 2", "Promise (Microtask)", "Timeout (Macrotask)"], explanation: "The macrotask executes and logs to the console." },
+                    { callStack: [], explanation: "The macrotask finishes. All queues are empty. The application is idle." }
+                ]
+            },
+        };
+
+        let currentScenarioKey = 'sync';
+        let currentStep = 0;
+        let animationInterval = null;
+
+        const select = document.getElementById('scenario-select');
+        const codeDisplay = document.getElementById('code-display');
+        const explanationText = document.getElementById('explanation-text');
+        const callStackContainer = document.getElementById('call-stack-container');
+        const webApisContainer = document.getElementById('web-apis-container');
+        const microtaskQueueContainer = document.getElementById('microtask-queue-container');
+        const macrotaskQueueContainer = document.getElementById('macrotask-queue-container');
+        const consoleOutputContainer = document.querySelector('#console-output-container code');
+        
+        const resetBtn = document.getElementById('reset-btn');
+        const stepBtn = document.getElementById('step-btn');
+        const animateBtn = document.getElementById('animate-btn');
+
+        function populateSelect() {
+            Object.keys(scenarios).forEach(key => {
+                const option = document.createElement('option');
+                option.value = key;
+                option.textContent = scenarios[key].name;
+                select.appendChild(option);
+            });
+        }
+
+        function loadScenario(key) {
+            stopAnimation();
+            currentScenarioKey = key;
+            currentStep = 0;
+            const scenario = scenarios[key];
+            codeDisplay.textContent = scenario.code;
+            renderStep(currentStep);
+        }
+
+        function renderStep(stepIndex) {
+            const scenario = scenarios[currentScenarioKey];
+            const stepData = scenario.steps[stepIndex] || {};
+
+            explanationText.textContent = stepData.explanation || '';
+            renderContainer(callStackContainer, stepData.callStack || [], 'stack-block');
+            renderContainer(webApisContainer, stepData.webApis || [], 'api-block');
+            renderContainer(microtaskQueueContainer, stepData.microtaskQueue || [], 'micro-block', true);
+            renderContainer(macrotaskQueueContainer, stepData.macrotaskQueue || [], 'macro-block', true);
+
+            consoleOutputContainer.textContent = (stepData.console || []).join('\n');
+            
+            stepBtn.disabled = currentStep >= scenario.steps.length - 1;
+        }
+        
+        function renderContainer(container, items, cssClass, isQueue = false) {
+            container.innerHTML = '';
+            items.forEach(item => {
+                const div = document.createElement('div');
+                div.textContent = item;
+                div.className = `task-block ${cssClass}`;
+                if(isQueue) {
+                    container.appendChild(div);
+                } else {
+                    container.insertBefore(div, container.firstChild);
+                }
+            });
+        }
+
+        function nextStep() {
+            const scenario = scenarios[currentScenarioKey];
+            if (currentStep < scenario.steps.length - 1) {
+                currentStep++;
+                renderStep(currentStep);
+            }
+        }
+        
+        function reset() {
+            stopAnimation();
+            currentStep = 0;
+            renderStep(currentStep);
+        }
+        
+        function startAnimation() {
+            stopAnimation();
+            animateBtn.textContent = 'Animating...';
+            animateBtn.disabled = true;
+            stepBtn.disabled = true;
+            
+            animationInterval = setInterval(() => {
+                const scenario = scenarios[currentScenarioKey];
+                if(currentStep >= scenario.steps.length - 1) {
+                    stopAnimation();
+                } else {
+                    nextStep();
+                }
+            }, 1500);
+        }
+
+        function stopAnimation() {
+            clearInterval(animationInterval);
+            animationInterval = null;
+            animateBtn.textContent = 'Animate';
+            animateBtn.disabled = false;
+            const scenario = scenarios[currentScenarioKey];
+            stepBtn.disabled = currentStep >= scenario.steps.length - 1;
+        }
+
+        select.addEventListener('change', (e) => loadScenario(e.target.value));
+        resetBtn.addEventListener('click', reset);
+        stepBtn.addEventListener('click', nextStep);
+        animateBtn.addEventListener('click', () => {
+             if (animationInterval) {
+                stopAnimation();
+            } else {
+                if (currentStep >= scenarios[currentScenarioKey].steps.length - 1) {
+                    reset();
+                }
+                startAnimation();
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            populateSelect();
+            loadScenario(Object.keys(scenarios)[0]);
+        });
+    </script>
+</body>
+</html>

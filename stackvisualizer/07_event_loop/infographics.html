@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infographic: The JavaScript Event Loop</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Chosen Palette: Brilliant Blues -->
+    <!-- 
+      Application Structure Plan: 
+      The infographic is structured as a top-to-bottom narrative scroll, telling the story of the event loop. This linear flow is ideal for guiding the user from foundational concepts to complex interactions and practical implications, mirroring how one would learn the topic.
+      1.  **Hero Section:** A bold title and introduction to hook the user.
+      2.  **Core Components:** A flowchart-style diagram introduces the main actors (Call Stack, Web APIs, Queues). This visual anchor is crucial for understanding the rest of the infographic.
+      3.  **Execution Flow:** A detailed, step-by-step visualization of a complex code snippet. This is the core "storytelling" element, making the abstract process concrete. It spans the full width to dominate the visual hierarchy.
+      4.  **Priority Breakdown:** A focused section using a doughnut chart and bar chart to visually contrast Microtasks and Macrotasks, directly addressing the most critical rule of the event loop.
+      5.  **Real-World Pitfalls:** A section using strong visual cues (warning icons) and a chart to illustrate the consequences of misunderstanding the event loop, like blocking.
+      6.  **Summary Table:** A final, dense summary for reference.
+      This structure was chosen for its educational clarity, moving from "what it is" to "how it works" and finally "why it matters".
+    -->
+    <!-- 
+      Visualization & Content Choices:
+      - Report Info: The relationship between the Call Stack, Web APIs, and Queues. Goal: Organize. Viz/Presentation: HTML/CSS Flowchart. Interaction: None (static diagram). Justification: A clear, static visual map is the best way to introduce the system's architecture before showing it in motion. Method: Tailwind CSS for layout. CONFIRM: NO SVG/Mermaid.
+      - Report Info: The execution order of sync code, Promises, and setTimeout. Goal: Change/Organize. Viz/Presentation: HTML/CSS step-by-step timeline. Interaction: None. Justification: A detailed temporal breakdown is essential to demonstrate the non-linear execution path, which is the central concept of the report. Method: Tailwind CSS. CONFIRM: NO SVG/Mermaid.
+      - Report Info: Microtask priority over macrotasks. Goal: Compare/Inform. Viz/Presentation: Doughnut Chart. Interaction: Hover tooltips. Justification: A doughnut chart immediately shows that the "whole" microtask queue is processed before any macrotasks, a powerful part-to-whole visualization. Method: Chart.js/Canvas. CONFIRM: NO SVG.
+      - Report Info: Blocking the event loop. Goal: Compare. Viz/Presentation: Bar Chart. Interaction: Hover tooltips. Justification: A bar chart effectively compares the execution time of a blocking function against the delay it imposes on an async task. Method: Chart.js/Canvas. CONFIRM: NO SVG.
+      - Report Info: Summary of Macrotasks vs. Microtasks. Goal: Organize/Compare. Viz/Presentation: HTML Table. Interaction: None. Justification: A table is the most efficient format for a dense, factual comparison, directly adapted from the report. Method: Tailwind CSS. CONFIRM: NO SVG/Mermaid.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FBFBFF;
+            color: #040F16;
+        }
+        .card {
+            background-color: white;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            margin-bottom: 2rem;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 350px;
+            max-height: 400px;
+        }
+        .flow-arrow {
+            position: relative;
+            text-align: center;
+            font-size: 2rem;
+            color: #01BAEF;
+        }
+        .flow-box {
+            border: 2px solid #0B4F6C;
+            background-color: #FBFBFF;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mx-auto p-4 md:p-8 max-w-7xl">
+
+        <!-- Header -->
+        <header class="text-center mb-12">
+            <h1 class="text-4xl md:text-5xl font-bold text-[#0B4F6C] mb-4">Demystifying the JavaScript Event Loop</h1>
+            <p class="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto">An infographic on how JavaScript achieves concurrency in a single-threaded environment.</p>
+        </header>
+
+        <!-- Section 1: Core Components -->
+        <section id="components" class="mb-16">
+            <h2 class="text-3xl font-bold text-center mb-8 text-[#0B4F6C]">The Core Architecture</h2>
+            <div class="card">
+                <p class="text-center text-gray-700 mb-8">JavaScript's concurrency model relies on four key components working together. The Event Loop's job is to monitor the Call Stack and the Queues, pushing callbacks from the queues to the stack when it's empty.</p>
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-4 items-center font-semibold text-center">
+                    <div class="p-4 rounded-lg flow-box">Call Stack <br/> (LIFO)</div>
+                    <div class="flow-arrow hidden md:block">→</div>
+                    <div class="flow-arrow block md:hidden">↓</div>
+                    <div class="p-4 rounded-lg flow-box">Web APIs <br/> (e.g., Timers, fetch)</div>
+                    <div class="flow-arrow hidden md:block">→</div>
+                    <div class="flow-arrow block md:hidden">↓</div>
+                    <div class="col-span-1 md:col-span-2 grid grid-rows-2 gap-4">
+                        <div class="p-4 rounded-lg flow-box bg-blue-50 border-blue-300">Microtask Queue <br/> (High Priority)</div>
+                        <div class="p-4 rounded-lg flow-box bg-sky-50 border-sky-300">Macrotask Queue <br/> (Low Priority)</div>
+                    </div>
+                </div>
+                 <div class="text-center mt-6 text-gray-500 text-sm">
+                    <p>The Call Stack must be empty before the Event Loop considers processing any queue. Microtasks always run before Macrotasks.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: Execution Order -->
+        <section id="execution" class="mb-16">
+            <h2 class="text-3xl font-bold text-center mb-8 text-[#0B4F6C]">Visualizing the Execution Flow</h2>
+            <div class="card p-4 md:p-8">
+                 <p class="text-center text-gray-700 mb-6">Let's trace the execution of a typical async script. Note how tasks are delegated to Web APIs and how callbacks are queued with different priorities.</p>
+                <div class="bg-gray-800 text-white p-4 rounded-lg font-mono text-sm mb-8">
+<pre><code>console.log('Sync 1');
+
+setTimeout(() => console.log('Timeout (Macro)'), 0);
+
+Promise.resolve().then(() => {
+  console.log('Promise 1 (Micro)');
+});
+
+console.log('Sync 2');</code></pre>
+                </div>
+                
+                <div class="space-y-6">
+                    <!-- Step 1-2 -->
+                    <div class="flex flex-col md:flex-row gap-4">
+                        <div class="flex-1 p-4 bg-gray-50 rounded-lg border">
+                            <h4 class="font-bold mb-2">1. Main Script Execution</h4>
+                            <p class="text-sm"><code>Sync 1</code> and <code>Sync 2</code> are logged immediately. The Call Stack adds and removes them. <code>setTimeout</code> is handed to the Web API. The Promise callback is queued as a microtask.</p>
+                        </div>
+                        <div class="flex-1 p-4 bg-gray-50 rounded-lg border">
+                            <h4 class="font-bold mb-2">2. End of Script → Microtask Phase</h4>
+                            <p class="text-sm">The script finishes and the Call Stack is empty. The Event Loop checks the Microtask Queue *first*. It finds the Promise callback.</p>
+                        </div>
+                    </div>
+                    <!-- Step 3-4 -->
+                    <div class="flex flex-col md:flex-row gap-4">
+                        <div class="flex-1 p-4 bg-gray-50 rounded-lg border">
+                             <h4 class="font-bold mb-2">3. Process Microtask</h4>
+                             <p class="text-sm">The Promise callback is pushed to the Call Stack and executed. <code>Promise 1 (Micro)</code> is logged. The Microtask Queue is now empty.</p>
+                        </div>
+                        <div class="flex-1 p-4 bg-gray-50 rounded-lg border">
+                             <h4 class="font-bold mb-2">4. Macrotask Phase</h4>
+                             <p class="text-sm">Now that the Microtask Queue is empty, the Event Loop checks the Macrotask Queue. The 0ms timer has elapsed, so the `setTimeout` callback is there. It gets pushed to the Call Stack and executed.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-8 p-4 bg-[#0B4F6C] text-white rounded-lg text-center">
+                    <h4 class="font-bold mb-2">Final Console Output:</h4>
+                    <pre class="font-mono text-lg">Sync 1
+Sync 2
+Promise 1 (Micro)
+Timeout (Macro)</pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: Priority -->
+        <section id="priority" class="mb-16">
+            <h2 class="text-3xl font-bold text-center mb-8 text-[#0B4F6C]">Task Priority: Microtasks First</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="card">
+                    <h3 class="text-xl font-bold text-center mb-4">Event Loop Processing Rule</h3>
+                     <p class="text-center text-gray-700 mb-4">In any given "turn" of the event loop, after the main script or a macrotask finishes, <strong>all</strong> available microtasks will run before the <strong>next</strong> macrotask is considered. This ensures promise-based logic resolves predictably before less urgent tasks.</p>
+                    <div class="chart-container h-64 md:h-80">
+                        <canvas id="priorityChart"></canvas>
+                    </div>
+                </div>
+                 <div class="card">
+                    <h3 class="text-xl font-bold text-center mb-4">The `setTimeout(fn, 0)` Pitfall</h3>
+                    <p class="text-center text-gray-700 mb-4">A `setTimeout` with a 0ms delay doesn't run immediately. It schedules a macrotask, which must wait for the entire microtask queue to be empty. This chart shows the `setTimeout` callback only runs after the higher-priority promise microtask.</p>
+                    <div class="chart-container h-64 md:h-80">
+                         <canvas id="timingChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 4: Pitfalls -->
+        <section id="pitfalls" class="mb-16">
+            <h2 class="text-3xl font-bold text-center mb-8 text-[#0B4F6C]">Real-World Pitfalls: Blocking the Loop</h2>
+             <div class="card">
+                <p class="text-center text-gray-700 mb-8">Because JavaScript is single-threaded, any long-running synchronous code will "block" the event loop. This freezes the UI and delays all asynchronous tasks, creating an unresponsive user experience. </p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                    <div>
+                        <div class="flex items-start mb-4">
+                            <span class="text-3xl mr-4">⚠️</span>
+                            <div>
+                                <h4 class="font-bold">Long Synchronous Calculations</h4>
+                                <p class="text-sm text-gray-600">Complex computations or iterating over huge arrays can lock the main thread for seconds. Solution: Offload to a Web Worker.</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start">
+                            <span class="text-3xl mr-4">️️⚠️</span>
+                             <div>
+                                <h4 class="font-bold">Microtask Starvation</h4>
+                                <p class="text-sm text-gray-600">A microtask that recursively queues another microtask can create an infinite loop, preventing macrotasks (like timers or clicks) and UI rendering from ever happening.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chart-container h-64 md:h-80">
+                        <canvas id="blockingChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 5: Summary Table -->
+        <section id="summary">
+            <h2 class="text-3xl font-bold text-center mb-8 text-[#0B4F6C]">Macrotasks vs. Microtasks: A Summary</h2>
+            <div class="card overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr>
+                            <th class="p-4 border-b-2 border-[#0B4F6C] font-bold">Feature</th>
+                            <th class="p-4 border-b-2 border-[#0B4F6C] font-bold bg-sky-50">Macrotasks</th>
+                            <th class="p-4 border-b-2 border-[#0B4F6C] font-bold bg-blue-50">Microtasks</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-gray-700">
+                        <tr class="bg-white">
+                            <td class="p-4 border-b border-gray-200 font-semibold">Priority</td>
+                            <td class="p-4 border-b border-gray-200 bg-sky-50">Lower</td>
+                            <td class="p-4 border-b border-gray-200 bg-blue-50">Higher</td>
+                        </tr>
+                        <tr class="bg-white">
+                            <td class="p-4 border-b border-gray-200 font-semibold">Examples</td>
+                            <td class="p-4 border-b border-gray-200 bg-sky-50 text-sm"><code>setTimeout</code>, DOM events, I/O</td>
+                            <td class="p-4 border-b border-gray-200 bg-blue-50 text-sm">Promise <code>.then()</code>, <code>queueMicrotask()</code></td>
+                        </tr>
+                        <tr class="bg-white">
+                            <td class="p-4 border-b border-gray-200 font-semibold">Processing Rule</td>
+                            <td class="p-4 border-b border-gray-200 bg-sky-50 text-sm">One task is processed per loop turn.</td>
+                            <td class="p-4 border-b border-gray-200 bg-blue-50 text-sm">The entire queue is emptied in one go.</td>
+                        </tr>
+                        <tr class="bg-white">
+                            <td class="p-4 font-semibold">Impact on UI</td>
+                            <td class="p-4 bg-sky-50 text-sm">Delayed by microtasks. Rendering happens after.</td>
+                            <td class="p-4 bg-blue-50 text-sm">Can delay rendering and macrotasks if lengthy.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </div>
+
+    <footer class="text-center py-8 text-gray-500">
+        <p>Infographic based on the report "Demystifying the JavaScript Event Loop".</p>
+    </footer>
+
+    <script>
+        const brilliantBlues = {
+            dark: '#0B4F6C',
+            accent: '#01BAEF',
+            light: '#FBFBFF',
+            textDark: '#040F16',
+            gray: '#292929'
+        };
+
+        const tooltipConfig = {
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        title: function(tooltipItems) {
+                            const item = tooltipItems[0];
+                            let label = item.chart.data.labels[item.dataIndex];
+                            if (Array.isArray(label)) {
+                                return label.join(' ');
+                            } else {
+                                return label;
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        function wrapLabel(str, maxWidth = 16) {
+            if (str.length <= maxWidth) {
+                return str;
+            }
+            const words = str.split(' ');
+            const lines = [];
+            let currentLine = '';
+            for (const word of words) {
+                if ((currentLine + ' ' + word).trim().length > maxWidth) {
+                    lines.push(currentLine.trim());
+                    currentLine = word;
+                } else {
+                    currentLine = (currentLine + ' ' + word).trim();
+                }
+            }
+            if (currentLine) {
+                lines.push(currentLine.trim());
+            }
+            return lines;
+        }
+
+        // Priority Chart (Doughnut)
+        const priorityCtx = document.getElementById('priorityChart').getContext('2d');
+        new Chart(priorityCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Microtasks Processed', 'Macrotasks Processed'],
+                datasets: [{
+                    label: 'Task Processing Order',
+                    data: [100, 1], // Visually represent "all" vs "one"
+                    backgroundColor: [brilliantBlues.dark, brilliantBlues.accent],
+                    borderColor: brilliantBlues.light,
+                    borderWidth: 4,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                    },
+                    tooltip: tooltipConfig.plugins.tooltip
+                }
+            }
+        });
+
+        // Timing Chart (Bar)
+        const timingCtx = document.getElementById('timingChart').getContext('2d');
+        new Chart(timingCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Sync Code', 'Promise (Microtask)', 'setTimeout (Macrotask)'],
+                datasets: [{
+                    label: 'Execution Order',
+                    data: [1, 2, 3], // Represents order
+                    backgroundColor: [brilliantBlues.gray, brilliantBlues.dark, brilliantBlues.accent],
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        title: { display: true, text: 'Relative Execution Time' }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: tooltipConfig.plugins.tooltip
+                }
+            }
+        });
+
+        // Blocking Chart (Bar)
+        const blockingCtx = document.getElementById('blockingChart').getContext('2d');
+        const blockingLabels = ['Long Sync Task (Blocking)', 'Delayed setTimeout (Macrotask)'];
+        new Chart(blockingCtx, {
+            type: 'bar',
+            data: {
+                labels: blockingLabels.map(l => wrapLabel(l)),
+                datasets: [{
+                    label: 'Task Execution Time (ms)',
+                    data: [2000, 50],
+                    backgroundColor: ['#ef4444', brilliantBlues.accent],
+                }, {
+                    label: 'Delay Caused by Blocking (ms)',
+                    data: [0, 2000],
+                     backgroundColor: ['transparent', '#f87171'],
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        stacked: true,
+                        title: { display: true, text: 'Time (ms)' }
+                    },
+                    y: {
+                        stacked: true,
+                    }
+                },
+                plugins: {
+                     legend: {
+                        position: 'bottom',
+                    },
+                    tooltip: tooltipConfig.plugins.tooltip
+                }
+            }
+        });
+    </script>
+</body>
+</html>

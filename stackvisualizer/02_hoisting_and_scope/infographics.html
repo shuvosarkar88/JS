@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JavaScript Execution Context: An Infographic</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- Chosen Palette: Energetic & Playful -->
+    <!-- Application Structure Plan: The infographic follows a logical narrative flow, starting with the foundational concept of Hoisting, moving to its direct consequence, the Temporal Dead Zone (TDZ), and then broadening to the overarching concepts of Scope and the Scope Chain. It concludes with a summary of best practices. This structure guides the user from a specific mechanism to the broader system, which is a more effective learning path than a simple chapter-by-chapter regurgitation of the report. Key data points are presented as large, bold stats or in clear, comparative charts and diagrams. -->
+    <!-- Visualization & Content Choices: 
+    - Hoisting Comparison: Goal: Compare. Method: A styled HTML table. Justification: A table provides the clearest, most direct comparison of multiple features (hoisting, initialization, scope) across multiple subjects (var, let, const, etc.), superior to separate text blocks. Library: None (HTML/CSS).
+    - TDZ Explanation: Goal: Organize/Inform. Method: HTML/CSS flowchart. Justification: A visual flow from scope entry to execution clearly illustrates the "temporal" nature of the dead zone. Library: None (HTML/CSS).
+    - Scope Hierarchy: Goal: Organize. Method: Nested HTML divs. Justification: Visually represents the hierarchical, contained nature of scopes (Global > Function > Block). Library: None (HTML/CSS).
+    - Declaration Keyword Features: Goal: Compare. Method: Donut Chart. Justification: A donut chart effectively shows the composition of features for each keyword and allows for quick visual comparison. Library: Chart.js (Canvas).
+    - Scope Chain Lookup: Goal: Organize/Process. Method: HTML/CSS flowchart. Justification: A step-by-step diagram is the best way to explain a procedural process like variable lookup. Library: None (HTML/CSS).
+    - CONFIRMING NO SVG/Mermaid. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f0f2f5;
+        }
+        .font-roboto-mono {
+            font-family: 'Roboto Mono', monospace;
+        }
+        .hero-gradient {
+            background: linear-gradient(135deg, #FF5733, #C70039);
+        }
+        .stat-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .flow-arrow {
+            content: '';
+            position: absolute;
+            width: 2px;
+            background-color: #FFC300;
+            z-index: 0;
+        }
+        .chart-container {
+            position: relative; 
+            width: 100%; 
+            max-width: 400px; 
+            margin-left: auto; 
+            margin-right: auto; 
+            height: 400px; 
+            max-height: 50vh;
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <header class="hero-gradient text-white text-center py-20 px-4">
+        <h1 class="text-4xl md:text-6xl font-extrabold mb-4">The JavaScript Execution Model</h1>
+        <p class="max-w-3xl mx-auto text-lg md:text-xl font-light">An infographic decoding Hoisting, the Temporal Dead Zone, and Scope to help you write cleaner, more predictable code.</p>
+    </header>
+
+    <main class="container mx-auto px-4 md:px-8 py-16">
+
+        <section id="hoisting" class="mb-20">
+            <h2 class="text-3xl md:text-4xl font-bold text-center mb-4">I. What is Hoisting?</h2>
+            <p class="max-w-3xl mx-auto text-center text-gray-600 mb-12">Hoisting is JavaScript's compile-time behavior of registering declarations before code execution. The engine "knows" about your variables and functions before their lines are run. This doesn't move code, but it prepares the scope. The key difference lies in how each declaration type is initialized.</p>
+            
+            <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
+                <div class="p-6 md:p-8">
+                    <h3 class="font-bold text-2xl text-center text-gray-800 mb-6">Hoisting Behavior by Keyword</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead class="bg-gray-50 border-b-2 border-gray-200">
+                            <tr>
+                                <th class="p-4 text-sm font-semibold text-gray-600 tracking-wider">Keyword</th>
+                                <th class="p-4 text-sm font-semibold text-gray-600 tracking-wider">Hoisted Value</th>
+                                <th class="p-4 text-sm font-semibold text-gray-600 tracking-wider">TDZ?</th>
+                                <th class="p-4 text-sm font-semibold text-gray-600 tracking-wider">Scope</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+                            <tr class="hover:bg-gray-50">
+                                <td class="p-4 font-bold font-roboto-mono text-red-600">var</td>
+                                <td class="p-4"><span class="font-roboto-mono bg-orange-100 text-orange-700 px-2 py-1 rounded-md">undefined</span></td>
+                                <td class="p-4 text-2xl text-center text-red-500">❌</td>
+                                <td class="p-4">Function / Global</td>
+                            </tr>
+                            <tr class="hover:bg-gray-50">
+                                <td class="p-4 font-bold font-roboto-mono text-blue-600">let</td>
+                                <td class="p-4"><span class="font-roboto-mono bg-gray-200 text-gray-700 px-2 py-1 rounded-md">*Uninitialized*</span></td>
+                                <td class="p-4 text-2xl text-center text-green-500">✅</td>
+                                <td class="p-4">Block</td>
+                            </tr>
+                             <tr class="hover:bg-gray-50">
+                                <td class="p-4 font-bold font-roboto-mono text-blue-600">const</td>
+                                <td class="p-4"><span class="font-roboto-mono bg-gray-200 text-gray-700 px-2 py-1 rounded-md">*Uninitialized*</span></td>
+                                <td class="p-4 text-2xl text-center text-green-500">✅</td>
+                                <td class="p-4">Block</td>
+                            </tr>
+                             <tr class="hover:bg-gray-50">
+                                <td class="p-4 font-bold font-roboto-mono text-purple-600">function</td>
+                                <td class="p-4"><span class="font-roboto-mono bg-green-100 text-green-700 px-2 py-1 rounded-md">Full Reference</span></td>
+                                <td class="p-4 text-2xl text-center text-red-500">❌</td>
+                                <td class="p-4">Function / Block</td>
+                            </tr>
+                             <tr class="hover:bg-gray-50">
+                                <td class="p-4 font-bold font-roboto-mono text-purple-600">class</td>
+                                <td class="p-4"><span class="font-roboto-mono bg-gray-200 text-gray-700 px-2 py-1 rounded-md">*Uninitialized*</span></td>
+                                <td class="p-4 text-2xl text-center text-green-500">✅</td>
+                                <td class="p-4">Block</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section id="tdz" class="mb-20">
+             <h2 class="text-3xl md:text-4xl font-bold text-center mb-4">II. The Temporal Dead Zone (TDZ)</h2>
+             <p class="max-w-3xl mx-auto text-center text-gray-600 mb-12">The TDZ is a safety feature for `let` and `const`. It's the period from when a scope is entered until the variable's declaration is executed. During this time, the variable exists but is uninitialized and cannot be accessed, preventing bugs from using variables before their time.</p>
+             <div class="relative flex flex-col items-center justify-center space-y-8 md:space-y-0 md:flex-row md:space-x-8">
+                <div class="absolute top-1/2 left-0 w-full h-1 bg-gray-200 hidden md:block"></div>
+                <div class="absolute top-0 left-1/2 w-1 h-full bg-gray-200 md:hidden"></div>
+
+                <div class="relative z-10 w-64 text-center">
+                    <div class="bg-blue-500 text-white w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl font-bold shadow-lg">1</div>
+                    <h3 class="font-bold mb-1">Scope Entry</h3>
+                    <p class="text-sm text-gray-500">`let` and `const` variables are hoisted but enter the TDZ.</p>
+                </div>
+
+                <div class="relative z-10 w-64 text-center">
+                    <div class="bg-red-500 text-white w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl font-bold shadow-lg">⚡</div>
+                    <h3 class="font-bold mb-1">The Dead Zone</h3>
+                    <p class="text-sm text-gray-500">Accessing the variable here throws a `ReferenceError`.</p>
+                </div>
+
+                <div class="relative z-10 w-64 text-center">
+                    <div class="bg-green-500 text-white w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl font-bold shadow-lg">3</div>
+                    <h3 class="font-bold mb-1">Declaration Reached</h3>
+                    <p class="text-sm text-gray-500">The variable is initialized and exits the TDZ.</p>
+                </div>
+             </div>
+        </section>
+
+        <section id="scope" class="mb-20 bg-white rounded-2xl shadow-xl p-8 md:p-12">
+            <h2 class="text-3xl md:text-4xl font-bold text-center mb-4">III. The Hierarchy of Scopes</h2>
+            <p class="max-w-3xl mx-auto text-center text-gray-600 mb-12">Scope determines variable accessibility. JavaScript's lexical scoping means this is defined by where the code is written. Think of it as a set of nested boxes: an inner box can see out, but an outer box cannot see in.</p>
+            <div class="grid md:grid-cols-2 gap-12 items-center">
+                <div class="relative p-4 border-4 border-dashed border-red-300 rounded-lg">
+                    <span class="absolute -top-4 -left-4 bg-red-500 text-white text-sm font-bold px-3 py-1 rounded-full">Global Scope</span>
+                    <p class="font-roboto-mono text-red-700">let global = "🌍";</p>
+                    <div class="mt-4 p-4 border-4 border-dashed border-blue-300 rounded-lg">
+                        <span class="absolute -top-4 -left-4 bg-blue-500 text-white text-sm font-bold px-3 py-1 rounded-full">Function Scope</span>
+                        <p class="font-roboto-mono text-blue-700">let outer = "🪐";</p>
+                        <div class="mt-4 p-4 border-4 border-dashed border-green-300 rounded-lg">
+                            <span class="absolute -top-4 -left-4 bg-green-500 text-white text-sm font-bold px-3 py-1 rounded-full">Block Scope</span>
+                            <p class="font-roboto-mono text-green-700">let inner = "🚀";</p>
+                        </div>
+                    </div>
+                </div>
+                 <div>
+                    <h3 class="font-bold text-xl mb-4">Key Characteristics</h3>
+                    <ul class="space-y-4">
+                        <li class="flex items-start">
+                            <span class="bg-red-500 text-white rounded-full w-6 h-6 text-sm flex items-center justify-center font-bold mr-3 flex-shrink-0">G</span>
+                            <div><strong class="text-red-600">Global:</strong> Accessible everywhere. Modern ES6 modules help avoid polluting this space.</div>
+                        </li>
+                         <li class="flex items-start">
+                            <span class="bg-blue-500 text-white rounded-full w-6 h-6 text-sm flex items-center justify-center font-bold mr-3 flex-shrink-0">F</span>
+                            <div><strong class="text-blue-600">Function:</strong> The primary way to encapsulate code before ES6. Forms the basis for closures.</div>
+                        </li>
+                         <li class="flex items-start">
+                            <span class="bg-green-500 text-white rounded-full w-6 h-6 text-sm flex items-center justify-center font-bold mr-3 flex-shrink-0">B</span>
+                            <div><strong class="text-green-600">Block (`let`/`const`):</strong> Confines variables to the `{...}` block they are in, preventing leaks and reducing errors.</div>
+                        </li>
+                    </ul>
+                    <div class="mt-8">
+                        <div class="chart-container">
+                             <canvas id="scopeFeaturesChart"></canvas>
+                        </div>
+                        <p class="text-center text-sm text-gray-500 mt-2">Feature comparison of declaration keywords.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="scope-chain">
+            <h2 class="text-3xl md:text-4xl font-bold text-center mb-4">IV. The Scope Chain Lookup</h2>
+            <p class="max-w-3xl mx-auto text-center text-gray-600 mb-12">When a variable is used, the engine searches for it, starting in the current scope and moving outwards until it's found or the global scope is reached. This unidirectional search is the Scope Chain.</p>
+
+            <div class="flex flex-col items-center">
+                <div class="w-full max-w-sm bg-white p-6 rounded-xl shadow-lg border-2 border-green-400 text-center">
+                    <h3 class="font-bold text-lg">1. Start in Current Scope</h3>
+                    <p class="font-roboto-mono text-sm">Looking for `myVar` in `innerFunc` scope...</p>
+                </div>
+                
+                <div class="h-12 w-2 bg-yellow-400 my-2"></div>
+                
+                <div class="w-full max-w-sm bg-white p-6 rounded-xl shadow-lg border-2 border-yellow-400 text-center">
+                    <h3 class="font-bold text-lg">2. Found?</h3>
+                    <div class="flex justify-around mt-4">
+                        <div>
+                            <p class="text-green-600 font-bold">Yes</p>
+                            <div class="h-8 w-2 bg-green-400 my-2 mx-auto"></div>
+                            <div class="w-24 bg-green-100 p-2 rounded-lg text-green-800 font-bold">End Search</div>
+                        </div>
+                        <div>
+                            <p class="text-red-600 font-bold">No</p>
+                            <div class="h-8 w-2 bg-red-400 my-2 mx-auto"></div>
+                            <div class="w-24 bg-red-100 p-2 rounded-lg text-red-800 font-bold">Go to Step 3</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="h-12 w-2 bg-blue-400 my-2"></div>
+                
+                 <div class="w-full max-w-sm bg-white p-6 rounded-xl shadow-lg border-2 border-blue-400 text-center">
+                    <h3 class="font-bold text-lg">3. Move to Outer Scope</h3>
+                    <p class="font-roboto-mono text-sm">Now checking `outerFunc` scope... (Repeat Step 2)</p>
+                </div>
+
+                <div class="h-12 w-2 bg-red-400 my-2"></div>
+
+                 <div class="w-full max-w-sm bg-white p-6 rounded-xl shadow-lg border-2 border-red-400 text-center">
+                    <h3 class="font-bold text-lg">4. Reach Global Scope</h3>
+                    <p class="font-roboto-mono text-sm">If still not found, throw `ReferenceError`.</p>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+    
+    <footer class="mt-20 bg-gray-800 text-white py-8">
+        <div class="container mx-auto text-center">
+            <p class="font-bold">Key Takeaway</p>
+            <p class="text-gray-300 max-w-2xl mx-auto mt-2">Always prefer `const` by default, use `let` when reassignment is needed, and avoid `var` in modern code. This leverages block scope and the TDZ to create safer, more predictable applications.</p>
+        </div>
+    </footer>
+
+    <script>
+        function wrapLabel(str, maxWidth) {
+            if (str.length <= maxWidth) {
+                return str;
+            }
+            const words = str.split(' ');
+            const lines = [];
+            let currentLine = '';
+            for (const word of words) {
+                if ((currentLine + word).length > maxWidth) {
+                    lines.push(currentLine.trim());
+                    currentLine = '';
+                }
+                currentLine += word + ' ';
+            }
+            lines.push(currentLine.trim());
+            return lines;
+        }
+
+        const tooltipTitleCallback = (tooltipItems) => {
+            const item = tooltipItems[0];
+            let label = item.chart.data.labels[item.dataIndex];
+            if (Array.isArray(label)) {
+              return label.join(' ');
+            }
+            return label;
+        };
+
+        const ctx = document.getElementById('scopeFeaturesChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: [wrapLabel('Block Scoped', 16), wrapLabel('Function Scoped', 16), wrapLabel('Has TDZ', 16), wrapLabel('No TDZ', 16)],
+                datasets: [{
+                    label: 'var',
+                    data: [0, 1, 0, 1],
+                    backgroundColor: '#C70039',
+                    hoverOffset: 4
+                }, {
+                    label: 'let',
+                    data: [1, 0, 1, 0],
+                    backgroundColor: '#FF5733',
+                    hoverOffset: 4
+                }, {
+                    label: 'const',
+                    data: [1, 0, 1, 0],
+                    backgroundColor: '#FFC300',
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '60%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                    },
+                    title: {
+                        display: true,
+                        text: 'Keyword Feature Breakdown',
+                        padding: {
+                            bottom: 20
+                        },
+                        font: {
+                            size: 16,
+                            weight: 'bold'
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                           title: tooltipTitleCallback
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+
+</body>
+</html>
